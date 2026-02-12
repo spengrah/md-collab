@@ -32,5 +32,10 @@ Since sidecars are gitignored in v0.1 MVP, optimize for local consistency and re
 - Log operation type, thread/message IDs, outcome, and error class.
 - Never log full comment text by default in operational logs.
 
+## Known limitations (v0.1)
+1. Concurrent read-modify-write from multiple writers can cause logical lost updates.
+2. Atomic write protects file integrity, not optimistic concurrency.
+3. v0.1 accepts this risk in single-workspace mode; mitigation is social/process coordination.
+
 ## Migration posture
 Design now so Git-tracked mode can be enabled later without schema breakage.

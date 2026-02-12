@@ -21,6 +21,11 @@ Maintain trust in comments by prioritizing correctness over aggressive auto-reli
 2. Add a command to re-run re-anchoring for all threads in file.
 3. Keep fixture corpus as the source of truth for behavior stability.
 
+## Performance notes (v0.1)
+1. Full-sweep re-anchoring on open/save/manual refresh is acceptable for v0.1 target sizes.
+2. Skip resolved threads during inline rendering work, but keep panel metadata valid.
+3. Incremental re-anchoring by edit range is a v1 optimization, not required now.
+
 ## Anti-patterns
 1. Re-anchoring with non-deterministic randomness.
 2. Attaching to first fuzzy match without tie checks.

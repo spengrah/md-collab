@@ -5,6 +5,11 @@ Status: v0.1 draft
 ## 1. Scope
 Defines deterministic algorithm for relocating anchors after document edits.
 
+## 1.1 Requirement IDs covered
+- MDC-BE-008
+- MDC-BE-009
+- MDC-BE-010
+
 ## 2. Inputs
 1. Current document text
 2. Stored thread anchor payload
@@ -25,18 +30,24 @@ Defines deterministic algorithm for relocating anchors after document edits.
    - If multiple exact matches, score candidates by prefix/suffix similarity.
    - Top score >= T_high and clear winner => `medium` or `high`.
 4. **Fuzzy recovery**
-   - If no exact quote match, fuzzy-match quote+context.
+   - If no exact quote match, fuzzy-match quote+context using **normalized Levenshtein similarity** on the string: `prefix + quote + suffix`.
+   - Normalization: lowercase + collapse whitespace + trim.
+   - Similarity = `1 - (levenshtein_distance / max(len(a), len(b)))`.
    - Score >= T_low => `low`.
 5. **Broken**
    - Otherwise return `broken`.
 
 ## 5. Candidate scoring
-Minimum required features:
-1. Prefix overlap score
-2. Suffix overlap score
-3. Normalized edit distance term
+For disambiguation, candidate score is:
 
-Implementations may weight terms differently, but must keep deterministic weights within a release.
+`score = 0.4 * prefix_overlap + 0.4 * suffix_overlap + 0.2 * levenshtein_similarity`
+
+Where each term is normalized to `[0,1]`.
+
+Tie-break rules:
+1. Higher score wins.
+2. If scores differ by < 0.03, choose nearest previous start offset.
+3. If still tied, return `broken` (do not auto-attach).
 
 ## 6. Output payload
 - updated range offsets/line-columns

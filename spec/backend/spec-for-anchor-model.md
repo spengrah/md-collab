@@ -6,6 +6,9 @@ Project: md-collab
 ## 1. Scope
 Defines anchor payload fields stored per thread.
 
+## 1.1 Requirement IDs covered
+- MDC-BE-007
+
 ## 2. Anchor structure (normative)
 - `primary`: positional coordinates
 - `fallback`: quote/context/hashes
@@ -16,9 +19,14 @@ Required fields:
 1. `start.line` (1-indexed)
 2. `start.column` (1-indexed)
 3. `start.offset_utf16` (0-indexed)
-4. `end.line`
-5. `end.column`
-6. `end.offset_utf16`
+4. `end.line` (1-indexed)
+5. `end.column` (1-indexed)
+6. `end.offset_utf16` (0-indexed)
+
+## 3.1 Coordinate conventions (normative)
+1. Sidecar wire format uses 1-indexed `line`/`column`.
+2. VS Code APIs are 0-indexed; conversion (`+1` on write, `-1` on read) must occur at the extension boundary.
+3. `offset_utf16` is code-unit based and remains 0-indexed.
 
 Optional:
 - `doc_revision`

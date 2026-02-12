@@ -16,10 +16,11 @@ Local-first Markdown collaboration with inline comment threads, designed for Spe
 
 ## Repository layout
 - `PRD.md` — locked product requirements (v0.1)
-- `spec/comments-sidecar-v0.md` — sidecar schema draft (legacy summary)
-- `spec/anchor-reanchoring-v0.md` — anchor/re-anchor algorithm draft (legacy summary)
-- `spec/vscode-extension-plan-v0.md` — implementation plan
-- `spec/backend/spec-for-*.md` — backend normative specs (sidecar, anchors, re-anchoring, fixtures, TDD plan)
+- `spec/comments-sidecar-v0.md` — superseded redirect
+- `spec/anchor-reanchoring-v0.md` — superseded redirect
+- `spec/vscode-extension-plan-v0.md` — implementation plan (non-normative)
+- `spec/spec-for-vscode-extension-mvp.md` — frontend normative MVP spec
+- `spec/backend/spec-for-*.md` — backend normative specs (sidecar, anchors, re-anchoring, fixtures, TDD plan, identity)
 - `guidance/backend/guidance-for-*.md` — backend implementation guidance
 - `spec/git-merge-conventions-v0.md` — future-mode policy (not MVP core)
 - `research/host-platform-rubric-v0.md` — platform evaluation rubric

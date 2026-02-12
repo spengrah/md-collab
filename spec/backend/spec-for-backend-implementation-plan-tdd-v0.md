@@ -5,6 +5,9 @@ Status: v0.1 draft
 ## Objective
 Deliver backend correctness first (schema + anchoring) before UI-heavy extension work.
 
+## Requirement IDs covered
+- MDC-BE-012
+
 ## Workstreams
 1. Sidecar schema + validator
 2. Anchor model primitives
@@ -21,7 +24,7 @@ Deliver backend correctness first (schema + anchoring) before UI-heavy extension
 6. Add operation tests for create/reply/edit/resolve/reopen.
 
 ## Deliverables
-1. `backend-core` library module API (language TBD).
+1. `backend-core` TypeScript library module API.
 2. Fixture corpus under `tests/fixtures/anchors/`.
 3. CI test target for deterministic replay.
 4. Backend changelog documenting behavior changes.

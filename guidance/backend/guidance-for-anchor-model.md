@@ -16,6 +16,7 @@ Use hybrid anchors to maximize resilience while avoiding false-positive reattach
 2. Compute hashes immediately and persist with anchor.
 3. If quote is very short/common, context quality matters more than position.
 4. Avoid hidden heuristics that differ across runtimes.
+5. For non-JS tooling (e.g., Python), compute UTF-16 code-unit offsets explicitly (e.g., `len(text.encode("utf-16-le")) // 2`).
 
 ## Anti-patterns
 1. Storing only line numbers.

@@ -7,6 +7,15 @@ Date: 2026-02-12
 ## 1. Scope
 Defines the canonical sidecar format (`*.comments.json`) for storing comment threads associated with a single Markdown file.
 
+## 1.1 Requirement IDs covered
+- MDC-BE-001
+- MDC-BE-002
+- MDC-BE-003
+- MDC-BE-004
+- MDC-BE-005
+- MDC-BE-006
+- MDC-BE-013
+
 ## 2. Invariants
 1. One sidecar maps to one markdown doc.
 2. Sidecar writes must be deterministic and atomic.
@@ -22,8 +31,7 @@ Defines the canonical sidecar format (`*.comments.json`) for storing comment thr
 {
   "schema_version": "0.1.0",
   "document": {
-    "path": "doc.md",
-    "fingerprint": "sha256:optional"
+    "path": "doc.md"
   },
   "threads": [
     {
@@ -69,6 +77,10 @@ Defines the canonical sidecar format (`*.comments.json`) for storing comment thr
 - `status`: `open | resolved`
 - `anchor_confidence`: `high | medium | low | broken`
 
+## 5.1 Author identity contract
+Author field semantics are defined in:
+- `spec-for-author-identity-v0.md`
+
 ## 6. Core operations (normative)
 1. `create_thread(range, initial_message, author)`
 2. `reply(thread_id, message, author)`
@@ -106,3 +118,4 @@ Defines the canonical sidecar format (`*.comments.json`) for storing comment thr
 1. Extension and agent can round-trip parse/write without data loss.
 2. Repeated no-op writes produce byte-stable output.
 3. Core operations are reproducible from fixtures.
+4. Concurrent write collision path is documented as a known v0.1 limitation.

@@ -5,6 +5,9 @@ Status: v0.1 draft
 ## 1. Scope
 Defines fixture format and required test scenarios for test-driven backend development.
 
+## 1.1 Requirement IDs covered
+- MDC-BE-011
+
 ## 2. Fixture file structure
 Each fixture bundle contains:
 1. `before.md`

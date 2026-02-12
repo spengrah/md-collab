@@ -47,6 +47,7 @@ Key pain points:
 5. **Resolved visibility default:** panel-only unless toggled inline.
 6. **MVP storage mode:** sidecars gitignored by default in single-workspace SSH mode.
 7. **Git merge policy:** documented for future multi-environment mode, not required for MVP.
+8. **Backend core language:** TypeScript.
 
 ## 5) Users and core jobs
 
@@ -86,13 +87,13 @@ Key pain points:
 
 ## 8) Data model summary
 
-Authoritative spec: `spec/comments-sidecar-v0.md`
+Authoritative spec: `spec/backend/spec-for-comments-sidecar.md`
 
 Top-level:
 ```json
 {
   "schema_version": "0.1.0",
-  "document": {"path": "doc.md", "fingerprint": "sha256:..."},
+  "document": {"path": "doc.md"},
   "threads": []
 }
 ```
@@ -106,7 +107,10 @@ Thread essentials:
 
 ## 9) Anchor & re-anchoring behavior
 
-Authoritative spec: `spec/anchor-reanchoring-v0.md`
+Authoritative specs:
+- `spec/backend/spec-for-anchor-model.md`
+- `spec/backend/spec-for-reanchoring-engine.md`
+- `spec/backend/spec-for-anchor-test-fixtures.md`
 
 Algorithm order:
 1. Fast path exact positional match.
@@ -128,10 +132,16 @@ Authoritative future-mode policy: `spec/git-merge-conventions-v0.md`
 ## 11) Milestones
 
 ### Milestone A — v0.1 specs (current)
-1. `spec/comments-sidecar-v0.md`
-2. `spec/anchor-reanchoring-v0.md`
-3. `spec/git-merge-conventions-v0.md`
-4. `spec/vscode-extension-plan-v0.md`
+1. `spec/backend/spec-for-comments-sidecar.md`
+2. `spec/backend/spec-for-anchor-model.md`
+3. `spec/backend/spec-for-reanchoring-engine.md`
+4. `spec/backend/spec-for-anchor-test-fixtures.md`
+5. `spec/backend/spec-for-backend-implementation-plan-tdd-v0.md`
+6. `spec/backend/spec-for-author-identity-v0.md`
+7. `spec/backend/requirements-index.md`
+8. `spec/backend/coupling-map.md`
+9. `spec/backend/verification-checklist.md`
+10. `spec/spec-for-vscode-extension-mvp.md`
 
 ### Milestone B — VS Code MVP implementation
 1. Sidecar load/render
@@ -161,9 +171,24 @@ Authoritative future-mode policy: `spec/git-merge-conventions-v0.md`
 
 - `PRD.md` (this file)
 - `README.md`
-- `spec/comments-sidecar-v0.md`
-- `spec/anchor-reanchoring-v0.md`
-- `spec/git-merge-conventions-v0.md`
-- `spec/vscode-extension-plan-v0.md`
+- `spec/backend/README.md` (normative backend entrypoint)
+- `spec/backend/spec-for-comments-sidecar.md`
+- `spec/backend/spec-for-anchor-model.md`
+- `spec/backend/spec-for-reanchoring-engine.md`
+- `spec/backend/spec-for-anchor-test-fixtures.md`
+- `spec/backend/spec-for-backend-implementation-plan-tdd-v0.md`
+- `spec/backend/spec-for-author-identity-v0.md`
+- `spec/backend/requirements-index.md`
+- `spec/backend/coupling-map.md`
+- `spec/backend/verification-checklist.md`
+- `guidance/backend/guidance-for-comments-sidecar.md`
+- `guidance/backend/guidance-for-anchor-model.md`
+- `guidance/backend/guidance-for-reanchoring-engine.md`
+- `guidance/backend/guidance-for-anchor-test-fixtures.md`
+- `guidance/backend/guidance-for-backend-implementation-plan-tdd-v0.md`
+- `guidance/backend/guidance-for-author-identity-v0.md`
+- `spec/spec-for-vscode-extension-mvp.md`
+- `spec/vscode-extension-plan-v0.md` (planning, non-normative)
+- `spec/git-merge-conventions-v0.md` (future-mode, non-core for MVP)
 - `research/host-platform-rubric-v0.md`
 - `research/host-platform-candidates-v0.md`
