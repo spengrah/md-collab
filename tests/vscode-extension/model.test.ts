@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
@@ -77,15 +77,25 @@ describe('vscode-extension model sidecar lifecycle', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('detects stale sidecar checkpoint and aborts write', () => {
+  it('detects stale sidecar checkpoint and aborts write without overwriting external changes', () => {
     const dir = mkdtempSync(join(tmpdir(), 'md-collab-ext-'));
     const docPath = join(dir, 'doc.md');
+    const sidecarPath = join(dir, 'doc.comments.json');
     writeFileSync(docPath, '# title\nhello\n', 'utf8');
 
-    const state = loadStateForDocument(docPath);
-    writeFileSync(join(dir, 'doc.comments.json'), '{"schema_version":"0.1.0","document":{"path":"x"},"threads":[]}', 'utf8');
+    const seeded = addComment(loadStateForDocument(docPath), '# title\nhello\n', 8, 13, 'seed', config);
+    const state = reloadState(seeded);
 
-    expect(() => addComment(state, '# title\nhello\n', 8, 13, 'comment', config)).toThrow(SidecarConflictError);
+    const externallyMutated = addComment(reloadState(seeded), '# title\nhello\n', 8, 13, 'external-update', config);
+    const beforeAttempt = readFileSync(sidecarPath, 'utf8');
+    expect(externallyMutated.sidecar.threads).toHaveLength(2);
+
+    expect(() => addComment(state, '# title\nhello\n', 8, 13, 'stale-write', config)).toThrow(SidecarConflictError);
+
+    const afterAttempt = readFileSync(sidecarPath, 'utf8');
+    expect(afterAttempt).toBe(beforeAttempt);
+    expect(afterAttempt).toContain('external-update');
+    expect(afterAttempt).not.toContain('stale-write');
 
     rmSync(dir, { recursive: true, force: true });
   });
