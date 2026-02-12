@@ -95,3 +95,4 @@ export const validateAnchor = (text, anchor) => {
     }
 };
 //# sourceMappingURL=anchor.js.map
+//# sourceMappingURL=anchor.js.map

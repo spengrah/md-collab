@@ -10,3 +10,4 @@ export const error = (code, message) => {
     throw new MdCollabError(code, message);
 };
 //# sourceMappingURL=errors.js.map
+//# sourceMappingURL=errors.js.map

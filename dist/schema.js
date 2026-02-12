@@ -25,3 +25,4 @@ export const parseSidecar = (json) => {
 };
 export const validateSidecar = (data) => validate(data);
 //# sourceMappingURL=schema.js.map
+//# sourceMappingURL=schema.js.map

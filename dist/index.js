@@ -7,3 +7,4 @@ export * from './operations.js';
 export * from './reanchor.js';
 export * from './sidecar-file.js';
 //# sourceMappingURL=index.js.map
+//# sourceMappingURL=index.js.map

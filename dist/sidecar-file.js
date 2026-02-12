@@ -47,3 +47,4 @@ export const writeSidecarFileAtomic = (path, sidecar) => {
 };
 export const sidecarPathForDocument = (docPath) => docPath.replace(/\.md$/i, '.comments.json');
 //# sourceMappingURL=sidecar-file.js.map
+//# sourceMappingURL=sidecar-file.js.map

@@ -13,3 +13,4 @@ const sortValue = (value) => {
 };
 export const serializeDeterministic = (value) => `${JSON.stringify(sortValue(value), null, 2)}\n`;
 //# sourceMappingURL=serializer.js.map
+//# sourceMappingURL=serializer.js.map
