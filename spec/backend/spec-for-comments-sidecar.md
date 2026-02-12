@@ -102,6 +102,11 @@ Author field semantics are defined in:
 3. ISO-8601 UTC timestamps.
 4. Preserve unknown fields.
 
+### 8.1 Unknown-field compatibility policy (v0.1)
+1. Unknown fields are schema-valid for forward compatibility.
+2. Parser + serializer must round-trip unknown fields without dropping them.
+3. Core operations should avoid destructive structural rewrites so unknown fields survive updates.
+
 ## 9. Error classes
 - `SCHEMA_INVALID`
 - `THREAD_NOT_FOUND`

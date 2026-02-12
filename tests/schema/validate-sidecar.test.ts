@@ -1,13 +1,15 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import Ajv2020 from 'ajv/dist/2020';
 import addFormats from 'ajv-formats';
 
-const root = process.cwd();
+const testDir = dirname(fileURLToPath(import.meta.url));
+const root = join(testDir, '..', '..');
 const schemaPath = join(root, 'schemas', 'comments-sidecar.schema.json');
-const validDir = join(root, 'tests', 'schema', 'valid');
-const invalidDir = join(root, 'tests', 'schema', 'invalid');
+const validDir = join(testDir, 'valid');
+const invalidDir = join(testDir, 'invalid');
 
 const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
 const ajv = new Ajv2020({ allErrors: true, strict: false });
@@ -32,4 +34,14 @@ describe('comments-sidecar schema', () => {
       expect(ok).toBe(false);
     });
   }
+
+  it('allows unknown fields for forward-compatible preservation', () => {
+    const data = loadJson(join(validDir, 'minimal-thread.json'));
+    data.extra_top = { any: 'value' };
+    data.threads[0].anchor.extra_anchor = 1;
+    data.threads[0].messages[0].extra_message = true;
+
+    const ok = validate(data);
+    expect(ok, JSON.stringify(validate.errors, null, 2)).toBe(true);
+  });
 });
