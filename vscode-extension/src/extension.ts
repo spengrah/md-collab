@@ -1,9 +1,12 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
+  SidecarConflictError,
   addComment,
   addReply,
   loadStateForDocument,
   reanchorAll,
+  reloadState,
   reopen,
   resolve,
   visibleInlineThreads,
@@ -14,6 +17,8 @@ import { ThreadTreeProvider } from './threadTree.js';
 import { MdCollabError } from '../vendor/core/index.js';
 
 const stateByDocument = new Map<string, DocumentThreadState>();
+let activeSidecarWatcher: vscode.FileSystemWatcher | undefined;
+let lastActiveMarkdownDocumentKey: string | undefined;
 
 const getConfig = (): Config => {
   const config = vscode.workspace.getConfiguration('mdCollab');
@@ -34,6 +39,11 @@ const requireAuthor = (config: Config): boolean => {
 };
 
 const explainMutationError = (err: unknown) => {
+  if (err instanceof SidecarConflictError) {
+    void vscode.window.showWarningMessage('md-collab: Sidecar changed externally. Run “md-collab: Reload Sidecar” and retry.');
+    return;
+  }
+
   if (err instanceof MdCollabError) {
     if (err.code === 'AUTHOR_INVALID') {
       void vscode.window.showErrorMessage(
@@ -105,12 +115,26 @@ const threadIdFromArgOrPick = async (
   return pick?.description;
 };
 
+const toRange = (thread: DocumentThreadState['sidecar']['threads'][number]): vscode.Range | undefined => {
+  const start = thread.anchor.primary.start;
+  if (!start) return undefined;
+
+  const end = thread.anchor.primary.end ?? start;
+  return new vscode.Range(
+    new vscode.Position(Math.max(0, start.line - 1), Math.max(0, start.column - 1)),
+    new vscode.Position(Math.max(0, end.line - 1), Math.max(0, end.column - 1)),
+  );
+};
+
 const applyDecorations = (
   editor: vscode.TextEditor | undefined,
   threadTree: ThreadTreeProvider,
   decorationMap: Map<string, vscode.TextEditorDecorationType>,
 ) => {
-  if (!editor || editor.document.languageId !== 'markdown') return;
+  if (!editor || editor.document.languageId !== 'markdown') {
+    threadTree.setState(undefined);
+    return;
+  }
   const state = loadForEditor(editor);
   threadTree.setState(state);
   if (!state) return;
@@ -162,6 +186,12 @@ export function activate(context: vscode.ExtensionContext) {
   const threadTree = new ThreadTreeProvider();
   vscode.window.registerTreeDataProvider('mdCollab.threads', threadTree);
 
+  const transientNavigateDecoration = vscode.window.createTextEditorDecorationType({
+    backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'),
+    border: '1px solid',
+    borderColor: new vscode.ThemeColor('editor.findMatchBorder'),
+  });
+
   const decorationMap = new Map<string, vscode.TextEditorDecorationType>([
     [
       'high',
@@ -190,9 +220,41 @@ export function activate(context: vscode.ExtensionContext) {
     ],
   ]);
 
-  context.subscriptions.push(...decorationMap.values());
+  context.subscriptions.push(transientNavigateDecoration, ...decorationMap.values());
 
-  const refresh = () => applyDecorations(vscode.window.activeTextEditor, threadTree, decorationMap);
+  const refresh = () => {
+    const editor = vscode.window.activeTextEditor;
+    if (editor?.document.languageId === 'markdown') {
+      lastActiveMarkdownDocumentKey = editor.document.uri.toString();
+    }
+    applyDecorations(editor, threadTree, decorationMap);
+  };
+
+  const setActiveSidecarWatcher = (editor: vscode.TextEditor | undefined) => {
+    activeSidecarWatcher?.dispose();
+    activeSidecarWatcher = undefined;
+
+    if (!editor || editor.document.languageId !== 'markdown') return;
+
+    const sidecarPath = editor.document.uri.fsPath.replace(/\.md$/i, '.comments.json');
+    const pattern = new vscode.RelativePattern(path.dirname(sidecarPath), path.basename(sidecarPath));
+    const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+
+    const reloadFromDisk = () => {
+      const key = editor.document.uri.toString();
+      const current = stateByDocument.get(key);
+      const next = current ? reloadState(current) : loadStateForDocument(editor.document.uri.fsPath);
+      stateByDocument.set(key, next);
+      refresh();
+    };
+
+    watcher.onDidChange(reloadFromDisk);
+    watcher.onDidCreate(reloadFromDisk);
+    watcher.onDidDelete(reloadFromDisk);
+
+    context.subscriptions.push(watcher);
+    activeSidecarWatcher = watcher;
+  };
 
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument((doc) => {
@@ -217,7 +279,10 @@ export function activate(context: vscode.ExtensionContext) {
       stateByDocument.set(key, reanchored);
       refresh();
     }),
-    vscode.window.onDidChangeActiveTextEditor(refresh),
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      setActiveSidecarWatcher(editor);
+      refresh();
+    }),
   );
 
   context.subscriptions.push(
@@ -271,6 +336,49 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }),
 
+    vscode.commands.registerCommand('mdCollab.navigateToThread', async (argThreadId?: string) => {
+      if (!argThreadId) return;
+
+      const activeEditor = vscode.window.activeTextEditor;
+      const key =
+        activeEditor?.document.languageId === 'markdown' ? activeEditor.document.uri.toString() : lastActiveMarkdownDocumentKey;
+      if (!key) return;
+
+      let state = stateByDocument.get(key);
+      const targetUri = vscode.Uri.parse(key);
+      if (!state) {
+        state = loadStateForDocument(targetUri.fsPath);
+        stateByDocument.set(key, state);
+      }
+
+      const thread = state.sidecar.threads.find((candidate) => candidate.thread_id === argThreadId);
+      if (!thread) {
+        void vscode.window.showWarningMessage('md-collab: Thread no longer exists in sidecar. Reload and try again.');
+        return;
+      }
+
+      const range = toRange(thread);
+      if (!range) {
+        void vscode.window.showWarningMessage(
+          'md-collab: Cannot navigate this thread because no anchor location is available. Reanchor and retry.',
+        );
+        return;
+      }
+
+      const doc = await vscode.workspace.openTextDocument(targetUri);
+      const shown = await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
+      shown.selection = new vscode.Selection(range.start, range.start);
+      shown.revealRange(range, vscode.TextEditorRevealType.InCenter);
+      shown.setDecorations(transientNavigateDecoration, [range]);
+      setTimeout(() => shown.setDecorations(transientNavigateDecoration, []), 1200);
+
+      if (thread.anchor.anchor_confidence === 'broken') {
+        void vscode.window.showWarningMessage(
+          'md-collab: Anchor is broken. Jumped to the last known location; reanchor may be needed.',
+        );
+      }
+    }),
+
     vscode.commands.registerCommand('mdCollab.resolveThread', async (argThreadId?: string) => {
       const editor = vscode.window.activeTextEditor;
       const state = loadForEditor(editor);
@@ -314,6 +422,17 @@ export function activate(context: vscode.ExtensionContext) {
       refresh();
     }),
 
+    vscode.commands.registerCommand('mdCollab.reloadSidecar', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document.languageId !== 'markdown') return;
+      const key = editor.document.uri.toString();
+      const prior = stateByDocument.get(key);
+      const next = prior ? reloadState(prior) : loadStateForDocument(editor.document.uri.fsPath);
+      stateByDocument.set(key, next);
+      refresh();
+      void vscode.window.showInformationMessage('md-collab: Sidecar reloaded from disk.');
+    }),
+
     vscode.commands.registerCommand('mdCollab.openThreadPanel', async () => {
       await vscode.commands.executeCommand('mdCollab.threads.focus');
     }),
@@ -327,6 +446,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
 
+  setActiveSidecarWatcher(vscode.window.activeTextEditor);
   refresh();
 }
 

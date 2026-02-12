@@ -19,9 +19,11 @@
     "onLanguage:markdown",
     "onCommand:mdCollab.addComment",
     "onCommand:mdCollab.replyToThread",
+    "onCommand:mdCollab.navigateToThread",
     "onCommand:mdCollab.resolveThread",
     "onCommand:mdCollab.reopenThread",
     "onCommand:mdCollab.reanchorCurrentFile",
+    "onCommand:mdCollab.reloadSidecar",
     "onCommand:mdCollab.openThreadPanel",
     "onCommand:mdCollab.openSidecarForRepair"
   ],
@@ -30,11 +32,30 @@
     "commands": [
       { "command": "mdCollab.addComment", "title": "md-collab: Add Comment" },
       { "command": "mdCollab.replyToThread", "title": "md-collab: Reply to Thread" },
+      { "command": "mdCollab.navigateToThread", "title": "md-collab: Jump to Thread Anchor" },
       { "command": "mdCollab.resolveThread", "title": "md-collab: Resolve Thread" },
       { "command": "mdCollab.reopenThread", "title": "md-collab: Reopen Thread" },
       { "command": "mdCollab.reanchorCurrentFile", "title": "md-collab: Reanchor Current File" },
+      { "command": "mdCollab.reloadSidecar", "title": "md-collab: Reload Sidecar" },
       { "command": "mdCollab.openThreadPanel", "title": "md-collab: Open Thread Panel" },
       { "command": "mdCollab.openSidecarForRepair", "title": "md-collab: Open Sidecar for Repair" }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "mdCollab.addComment",
+          "when": "editorTextFocus && editorHasSelection && resourceExtname == .md",
+          "group": "navigation@50"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "mdCollab.addComment",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "editorTextFocus && editorHasSelection && resourceExtname == .md"
+      }
     ],
     "configuration": {
       "title": "md-collab",

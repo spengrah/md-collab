@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync, statSync } from 'node:fs';
 import {
   applyReanchor,
   createThread,
@@ -15,12 +16,21 @@ import {
   type Sidecar,
 } from '../vendor/core/index.js';
 
+export interface SidecarRevisionToken {
+  exists: boolean;
+  mtimeMs: number | null;
+  size: number | null;
+  hash: string | null;
+}
+
 export interface DocumentThreadState {
+  documentPath: string;
   sidecarPath: string;
   sidecar: Sidecar;
   readOnly: boolean;
   malformedMessage?: string;
   sidecarExists: boolean;
+  revisionToken: SidecarRevisionToken;
 }
 
 export interface Config {
@@ -28,6 +38,13 @@ export interface Config {
   authorLabel: string;
   showResolvedInline: boolean;
   reanchorOnSave: boolean;
+}
+
+export class SidecarConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SidecarConflictError';
+  }
 }
 
 const now = () => new Date().toISOString();
@@ -38,19 +55,50 @@ export const emptySidecarForDocument = (docPath: string): Sidecar => ({
   threads: [],
 });
 
+const revisionTokenForPath = (path: string): SidecarRevisionToken => {
+  try {
+    const stat = statSync(path);
+    const payload = readFileSync(path, 'utf8');
+    const hash = createHash('sha256').update(payload).digest('hex');
+    return {
+      exists: true,
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+      hash,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('ENOENT')) {
+      return {
+        exists: false,
+        mtimeMs: null,
+        size: null,
+        hash: null,
+      };
+    }
+    throw err;
+  }
+};
+
+const sameRevision = (a: SidecarRevisionToken, b: SidecarRevisionToken): boolean =>
+  a.exists === b.exists && a.mtimeMs === b.mtimeMs && a.size === b.size && a.hash === b.hash;
+
 export const loadStateForDocument = (docPath: string): DocumentThreadState => {
   const sidecarPath = sidecarPathForDocument(docPath);
+  const revisionToken = revisionTokenForPath(sidecarPath);
   try {
     const sidecar = readSidecarFile(sidecarPath);
-    return { sidecarPath, sidecar, readOnly: false, sidecarExists: true };
+    return { documentPath: docPath, sidecarPath, sidecar, readOnly: false, sidecarExists: true, revisionToken };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown sidecar error';
     if (message.includes('ENOENT')) {
       return {
+        documentPath: docPath,
         sidecarPath,
         sidecar: emptySidecarForDocument(docPath),
         readOnly: false,
         sidecarExists: false,
+        revisionToken,
       };
     }
 
@@ -60,17 +108,21 @@ export const loadStateForDocument = (docPath: string): DocumentThreadState => {
     } catch (schemaErr) {
       const schemaMessage = schemaErr instanceof Error ? schemaErr.message : message;
       return {
+        documentPath: docPath,
         sidecarPath,
         sidecar: emptySidecarForDocument(docPath),
         readOnly: true,
         malformedMessage: schemaMessage,
         sidecarExists: true,
+        revisionToken,
       };
     }
 
     throw err;
   }
 };
+
+export const reloadState = (state: DocumentThreadState): DocumentThreadState => loadStateForDocument(state.documentPath);
 
 const authorFromConfig = (config: Config): Author => ({
   author_id: config.authorId,
@@ -79,8 +131,17 @@ const authorFromConfig = (config: Config): Author => ({
 });
 
 const persist = (state: DocumentThreadState): DocumentThreadState => {
+  const currentRevision = revisionTokenForPath(state.sidecarPath);
+  if (!sameRevision(currentRevision, state.revisionToken)) {
+    throw new SidecarConflictError('sidecar changed on disk; reload sidecar then retry your action');
+  }
+
   writeSidecarFileAtomic(state.sidecarPath, state.sidecar);
-  return { ...state, sidecarExists: true };
+  return {
+    ...state,
+    sidecarExists: true,
+    revisionToken: revisionTokenForPath(state.sidecarPath),
+  };
 };
 
 export const addComment = (
