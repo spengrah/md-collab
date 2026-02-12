@@ -1,0 +1,86 @@
+{
+  "name": "md-collab-vscode",
+  "displayName": "md-collab",
+  "description": "Inline Markdown collaboration sidecar UI",
+  "version": "0.1.0",
+  "publisher": "md-collab",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onCommand:mdCollab.addComment",
+    "onCommand:mdCollab.replyToThread",
+    "onCommand:mdCollab.resolveThread",
+    "onCommand:mdCollab.reopenThread",
+    "onCommand:mdCollab.reanchorCurrentFile",
+    "onCommand:mdCollab.openThreadPanel",
+    "onCommand:mdCollab.openSidecarForRepair"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "mdCollab.addComment", "title": "md-collab: Add Comment" },
+      { "command": "mdCollab.replyToThread", "title": "md-collab: Reply to Thread" },
+      { "command": "mdCollab.resolveThread", "title": "md-collab: Resolve Thread" },
+      { "command": "mdCollab.reopenThread", "title": "md-collab: Reopen Thread" },
+      { "command": "mdCollab.reanchorCurrentFile", "title": "md-collab: Reanchor Current File" },
+      { "command": "mdCollab.openThreadPanel", "title": "md-collab: Open Thread Panel" },
+      { "command": "mdCollab.openSidecarForRepair", "title": "md-collab: Open Sidecar for Repair" }
+    ],
+    "configuration": {
+      "title": "md-collab",
+      "properties": {
+        "mdCollab.authorId": {
+          "type": "string",
+          "default": "",
+          "description": "Author ID used for comment writes. Required for write actions."
+        },
+        "mdCollab.authorLabel": {
+          "type": "string",
+          "default": "",
+          "description": "Display label used for comment writes. Required for write actions."
+        },
+        "mdCollab.showResolvedInline": {
+          "type": "boolean",
+          "default": false,
+          "description": "Render resolved thread inline markers."
+        },
+        "mdCollab.reanchorOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reanchor comments automatically when a markdown file is saved."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mdCollab",
+          "title": "md-collab",
+          "icon": "resources/comment.svg"
+        }
+      ]
+    },
+    "views": {
+      "mdCollab": [
+        {
+          "id": "mdCollab.threads",
+          "name": "Threads"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.24",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.9.2"
+  }
+}
