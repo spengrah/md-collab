@@ -7,10 +7,8 @@ export interface ReanchorParams {
   T_low?: number;
 }
 
-const defaults = { W: 600, T_high: 0.9, T_low: 0.6 };
+const defaults = { W: 600, T_high: 0.9, T_low: 0.72 };
 const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
-const normalizeContext = (s: string) => s.toLowerCase().replace(/\r\n/g, '\n').trim();
-const contextStrictMatch = (a: string, b: string) => normalizeContext(a) === normalizeContext(b);
 
 const levenshtein = (a: string, b: string): number => {
   if (!a.length) return b.length;
@@ -35,15 +33,10 @@ const similarity = (a: string, b: string): number => {
   return 1 - levenshtein(aa, bb) / maxLen;
 };
 
-const overlap = (needle: string, haystack: string): number => similarity(needle, haystack);
-
-const normalizeNewlines = (text: string): string => text.replace(/\r\n/g, '\n');
-
 interface Candidate {
   start: number;
   end: number;
   score?: number;
-  tokenScore?: number;
 }
 
 const toOutput = (
@@ -66,7 +59,6 @@ const toOutput = (
   }
   return {
     start: offsetToPoint(text, candidate.start),
-    // Fixtures use inclusive end line/column coordinates.
     end: offsetToPoint(text, Math.max(candidate.start, candidate.end - 1)),
     anchor_confidence,
     reason_code,
@@ -75,126 +67,105 @@ const toOutput = (
   };
 };
 
+const exactMatches = (text: string, quote: string, from = 0, to = text.length): Candidate[] => {
+  const matches: Candidate[] = [];
+  const hay = text.slice(from, to);
+  let idx = hay.indexOf(quote);
+  while (idx !== -1) {
+    matches.push({ start: from + idx, end: from + idx + quote.length });
+    idx = hay.indexOf(quote, idx + 1);
+  }
+  return matches;
+};
+
 export const reanchor = (documentText: string, anchor: Anchor, params: ReanchorParams = {}): ReanchorOutput => {
-  const text = normalizeNewlines(documentText);
+  const text = documentText.replace(/\r\n/g, '\n');
   const config = { ...defaults, ...params };
   const quote = anchor.fallback.quote;
   const oldStart = anchor.primary.start.offset_utf16;
   const oldEnd = anchor.primary.end.offset_utf16;
 
-  if (text.slice(oldStart, oldEnd) === quote) {
-    const candPrefix = text.slice(Math.max(0, oldStart - anchor.fallback.prefix.length), oldStart);
-    const candSuffix = text.slice(oldEnd, Math.min(text.length, oldEnd + anchor.fallback.suffix.length));
-    if (contextStrictMatch(anchor.fallback.prefix, candPrefix) && contextStrictMatch(anchor.fallback.suffix, candSuffix)) {
-      return toOutput(text, { start: oldStart, end: oldEnd }, 'high', 'exact_positional', false);
-    }
+  // 1) fast exact positional
+  if (oldStart >= 0 && oldEnd <= text.length && text.slice(oldStart, oldEnd) === quote) {
+    return toOutput(text, { start: oldStart, end: oldEnd }, 'high', 'exact_positional', false);
   }
 
+  // 2) nearby exact quote search
   const windowStart = Math.max(0, oldStart - config.W);
   const windowEnd = Math.min(text.length, oldStart + config.W);
-  const local = text.slice(windowStart, windowEnd);
-  const localMatches: Candidate[] = [];
-  let idx = local.indexOf(quote);
-  while (idx !== -1) {
-    localMatches.push({ start: windowStart + idx, end: windowStart + idx + quote.length });
-    idx = local.indexOf(quote, idx + 1);
+  const nearbyMatches = exactMatches(text, quote, windowStart, windowEnd);
+  if (nearbyMatches.length === 1) {
+    return toOutput(text, nearbyMatches[0], 'high', 'exact_nearby', true);
   }
 
-  if (localMatches.length === 1) {
-    const candidate = localMatches[0];
-    const candPrefix = text.slice(Math.max(0, candidate.start - anchor.fallback.prefix.length), candidate.start);
-    const candSuffix = text.slice(candidate.end, Math.min(text.length, candidate.end + anchor.fallback.suffix.length));
-    if (contextStrictMatch(anchor.fallback.prefix, candPrefix) && contextStrictMatch(anchor.fallback.suffix, candSuffix)) {
-      return toOutput(text, candidate, 'high', 'exact_nearby', true);
-    }
-
-    const candidatePoint = offsetToPoint(text, candidate.start);
-    if (candidatePoint.column === 1) {
-      return toOutput(text, candidate, 'medium', 'exact_nearby', true);
-    }
-    return toOutput(text, candidate, 'medium', 'context_disambiguated', true);
-  }
-
-  const allMatches: Candidate[] = [];
-  idx = text.indexOf(quote);
-  while (idx !== -1) {
-    const start = idx;
-    const end = idx + quote.length;
-    const candPrefix = text.slice(Math.max(0, start - anchor.fallback.prefix.length), start);
-    const candSuffix = text.slice(end, Math.min(text.length, end + anchor.fallback.suffix.length));
-    const pref = overlap(anchor.fallback.prefix, candPrefix);
-    const suff = overlap(anchor.fallback.suffix, candSuffix);
-    const lev = similarity(anchor.fallback.prefix + quote + anchor.fallback.suffix, candPrefix + quote + candSuffix);
-    const score = 0.4 * pref + 0.4 * suff + 0.2 * lev;
-    allMatches.push({ start, end, score });
-    idx = text.indexOf(quote, idx + 1);
-  }
-
-  if (allMatches.length > 1) {
-    const ranked = [...allMatches].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-    const top = ranked[0];
-    const second = ranked[1];
-    if ((top.score ?? 0) >= config.T_high) {
-      const delta = (top.score ?? 0) - (second.score ?? 0);
-      if (delta >= 0.03) {
-        return toOutput(text, top, 'medium', 'context_disambiguated', true, top.score);
-      }
-      const byDistance = ranked.sort(
-        (a, b) => Math.abs(a.start - oldStart) - Math.abs(b.start - oldStart),
+  // 3) context disambiguation for multiple exact matches
+  const allExact = exactMatches(text, quote);
+  if (allExact.length > 1) {
+    const scored = allExact.map((candidate) => {
+      const candPrefix = text.slice(Math.max(0, candidate.start - anchor.fallback.prefix.length), candidate.start);
+      const candSuffix = text.slice(candidate.end, Math.min(text.length, candidate.end + anchor.fallback.suffix.length));
+      const prefixOverlap = similarity(anchor.fallback.prefix, candPrefix);
+      const suffixOverlap = similarity(anchor.fallback.suffix, candSuffix);
+      const lev = similarity(
+        anchor.fallback.prefix + anchor.fallback.quote + anchor.fallback.suffix,
+        candPrefix + quote + candSuffix,
       );
-      const d1 = Math.abs(byDistance[0].start - oldStart);
-      const d2 = Math.abs(byDistance[1].start - oldStart);
-      if (d1 !== d2) {
-        return toOutput(text, byDistance[0], 'medium', 'context_disambiguated', true, byDistance[0].score);
-      }
+      const score = 0.4 * prefixOverlap + 0.4 * suffixOverlap + 0.2 * lev;
+      return { ...candidate, score };
+    });
+
+    scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    const top = scored[0];
+    const second = scored[1];
+    const topScore = top.score ?? 0;
+    const secondScore = second.score ?? 0;
+
+    if (topScore < config.T_high) {
       return toOutput(text, null, 'broken', 'broken', true);
     }
+
+    const delta = topScore - secondScore;
+    if (delta >= 0.03) {
+      return toOutput(text, top, 'medium', 'context_disambiguated', true, topScore);
+    }
+
+    const dTop = Math.abs(top.start - oldStart);
+    const dSecond = Math.abs(second.start - oldStart);
+    if (dTop < dSecond) {
+      return toOutput(text, top, 'medium', 'context_disambiguated', true, topScore);
+    }
+    if (dSecond < dTop) {
+      return toOutput(text, second, 'medium', 'context_disambiguated', true, secondScore);
+    }
+
+    // Spec safety: ambiguity resolves to broken and does not proceed to fuzzy.
+    return toOutput(text, null, 'broken', 'broken', true);
   }
 
-  const target = anchor.fallback.quote;
-  let best: Candidate | null = null;
-  let bestNoNewline: Candidate | null = null;
-  const minLen = Math.max(1, quote.length - Math.floor(quote.length * 0.35));
-  const maxLen = Math.min(text.length, quote.length + Math.floor(quote.length * 0.2) + 1);
-  const fuzzyStart = Math.max(0, oldStart - config.W);
-  const fuzzyEnd = Math.min(text.length, oldStart + config.W + quote.length);
-  for (let start = fuzzyStart; start < fuzzyEnd; start++) {
-    for (let len = minLen; len <= maxLen && start + len <= fuzzyEnd; len++) {
-      const chunk = text.slice(start, start + len);
-      const simQuote = similarity(target, chunk);
-      const candPrefix = text.slice(Math.max(0, start - anchor.fallback.prefix.length), start);
-      const candSuffix = text.slice(start + len, Math.min(text.length, start + len + anchor.fallback.suffix.length));
-      const simContext = similarity(
-        anchor.fallback.prefix + anchor.fallback.suffix,
-        candPrefix + candSuffix,
-      );
-      const distancePenalty = Math.min(1, Math.abs(start - oldStart) / Math.max(1, config.W));
-      const quoteTokens = new Set(normalize(target).split(' ').filter(Boolean));
-      const chunkTokens = new Set(normalize(chunk).split(' ').filter(Boolean));
-      const intersect = [...quoteTokens].filter((t) => chunkTokens.has(t)).length;
-      const tokenScore = quoteTokens.size ? intersect / quoteTokens.size : 0;
-      const newlinePenalty = chunk.includes('\n') ? 0.1 : 0;
-      const score = simQuote * 0.7 + simContext * 0.25 + (1 - distancePenalty) * 0.05 - newlinePenalty;
-      const candidate = { start, end: start + len, score, tokenScore };
-      if (!best || score > (best.score ?? -1)) {
-        best = candidate;
+  // 4) fuzzy recovery only when there are no exact quote matches
+  if (allExact.length === 0) {
+    const target = anchor.fallback.prefix + anchor.fallback.quote + anchor.fallback.suffix;
+    const minLen = Math.max(1, quote.length - Math.floor(quote.length * 0.35));
+    const maxLen = Math.min(text.length, quote.length + Math.floor(quote.length * 0.8));
+    const fuzzyStart = Math.max(0, oldStart - config.W);
+    const fuzzyEnd = Math.min(text.length, oldStart + config.W + Math.max(quote.length, 1));
+
+    let best: Candidate | null = null;
+    for (let start = fuzzyStart; start < fuzzyEnd; start++) {
+      for (let len = minLen; len <= maxLen && start + len <= fuzzyEnd; len++) {
+        const chunk = text.slice(start, start + len);
+        const score = similarity(target, chunk);
+        if (!best || score > (best.score ?? -1)) {
+          best = { start, end: start + len, score };
+        }
       }
-      if (!chunk.includes('\n') && (!bestNoNewline || score > (bestNoNewline.score ?? -1))) {
-        bestNoNewline = candidate;
-      }
+    }
+
+    if (best && (best.score ?? 0) >= config.T_low) {
+      return toOutput(text, best, 'low', 'fuzzy_recovery', true, best.score);
     }
   }
 
-  const fuzzyBest =
-    bestNoNewline && best && (best.score ?? 0) - (bestNoNewline.score ?? 0) <= 0.06 ? bestNoNewline : best;
-
-  if (
-    fuzzyBest &&
-    ((fuzzyBest.score ?? 0) >= config.T_low ||
-      ((fuzzyBest.tokenScore ?? 0) >= 0.5 && (fuzzyBest.score ?? 0) >= config.T_low - 0.12))
-  ) {
-    return toOutput(text, fuzzyBest, 'low', 'fuzzy_recovery', true, fuzzyBest.score);
-  }
-
+  // 5) broken
   return toOutput(text, null, 'broken', 'broken', true);
 };

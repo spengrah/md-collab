@@ -1,5 +1,5 @@
 {
   "results": [
-    {"thread_id": "t-split-1", "expected_confidence": "medium", "expected_reason_code": "context_disambiguated", "expected_start": {"line": 2, "column": 6}, "expected_end": {"line": 2, "column": 19}, "requires_manual_relink": false}
+    {"thread_id": "t-split-1", "expected_confidence": "high", "expected_reason_code": "exact_positional", "expected_start": {"line": 2, "column": 6}, "expected_end": {"line": 2, "column": 19}, "requires_manual_relink": false}
   ]
 }
