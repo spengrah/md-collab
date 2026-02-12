@@ -13,7 +13,7 @@ import {
   type AnchorConfidence,
   type Author,
   type Sidecar,
-} from '../../dist/index.js';
+} from '../vendor/core/index.js';
 
 export interface DocumentThreadState {
   sidecarPath: string;
