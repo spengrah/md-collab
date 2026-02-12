@@ -11,7 +11,7 @@ import {
   type DocumentThreadState,
 } from './model.js';
 import { ThreadTreeProvider } from './threadTree.js';
-import { MdCollabError } from '../../dist/index.js';
+import { MdCollabError } from '../vendor/core/index.js';
 
 const stateByDocument = new Map<string, DocumentThreadState>();
 
