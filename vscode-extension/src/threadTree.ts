@@ -10,6 +10,27 @@ class GroupItem extends vscode.TreeItem {
   }
 }
 
+class NoticeItem extends vscode.TreeItem {
+  constructor() {
+    super('Note: md-collab sidecar writes are outside Markdown undo/redo.', vscode.TreeItemCollapsibleState.None);
+    this.iconPath = new vscode.ThemeIcon('info');
+    this.contextValue = 'mdCollab.notice.undoRedo';
+  }
+}
+
+class BrokenAnchorRelinkItem extends vscode.TreeItem {
+  constructor(count: number) {
+    super(`Broken anchors detected (${count}) — Relink now`, vscode.TreeItemCollapsibleState.None);
+    this.iconPath = new vscode.ThemeIcon('warning');
+    this.contextValue = 'mdCollab.notice.brokenAnchor';
+    this.command = {
+      command: 'mdCollab.reanchorCurrentFile',
+      title: 'Relink broken anchors',
+    };
+    this.tooltip = 'Run reanchor on this file to relink broken thread anchors.';
+  }
+}
+
 export class ThreadItem extends vscode.TreeItem {
   constructor(public readonly threadId: string, label: string, status: 'open' | 'resolved') {
     super(label, vscode.TreeItemCollapsibleState.None);
@@ -39,7 +60,14 @@ export class ThreadTreeProvider implements vscode.TreeDataProvider<vscode.TreeIt
     if (!element) {
       const openCount = this.state.sidecar.threads.filter((t) => t.status === 'open').length;
       const resolvedCount = this.state.sidecar.threads.filter((t) => t.status === 'resolved').length;
-      return [new GroupItem('open', openCount), new GroupItem('resolved', resolvedCount)];
+      const brokenAnchors = this.state.sidecar.threads.filter((t) => t.anchor.anchor_confidence === 'broken').length;
+
+      const roots: vscode.TreeItem[] = [new NoticeItem()];
+      if (brokenAnchors > 0) {
+        roots.push(new BrokenAnchorRelinkItem(brokenAnchors));
+      }
+      roots.push(new GroupItem('open', openCount), new GroupItem('resolved', resolvedCount));
+      return roots;
     }
 
     if (element instanceof GroupItem) {

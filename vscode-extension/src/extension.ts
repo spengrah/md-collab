@@ -11,6 +11,7 @@ import {
   type DocumentThreadState,
 } from './model.js';
 import { ThreadTreeProvider } from './threadTree.js';
+import { MdCollabError } from '../../dist/index.js';
 
 const stateByDocument = new Map<string, DocumentThreadState>();
 
@@ -30,6 +31,30 @@ const requireAuthor = (config: Config): boolean => {
     return false;
   }
   return true;
+};
+
+const explainMutationError = (err: unknown) => {
+  if (err instanceof MdCollabError) {
+    if (err.code === 'AUTHOR_INVALID') {
+      void vscode.window.showErrorMessage(
+        'md-collab: Your author identity is invalid for this action. Update mdCollab.authorId/authorLabel and try again.',
+      );
+      return;
+    }
+
+    if (err.code === 'ID_CONFLICT') {
+      void vscode.window.showErrorMessage(
+        'md-collab: Comment ID conflict detected. Re-run the action; if this persists, reanchor and retry.',
+      );
+      return;
+    }
+
+    void vscode.window.showErrorMessage(`md-collab: ${err.message}`);
+    return;
+  }
+
+  const message = err instanceof Error ? err.message : String(err);
+  void vscode.window.showErrorMessage(`md-collab: ${message}`);
 };
 
 const loadForEditor = (editor: vscode.TextEditor | undefined): DocumentThreadState | undefined => {
@@ -213,11 +238,15 @@ export function activate(context: vscode.ExtensionContext) {
       const body = await vscode.window.showInputBox({ prompt: 'Comment text' });
       if (!body) return;
 
-      const startOffset = editor.document.offsetAt(editor.selection.start);
-      const endOffset = editor.document.offsetAt(editor.selection.end);
-      const next = addComment(state, editor.document.getText(), startOffset, endOffset, body, config);
-      stateByDocument.set(editor.document.uri.toString(), next);
-      refresh();
+      try {
+        const startOffset = editor.document.offsetAt(editor.selection.start);
+        const endOffset = editor.document.offsetAt(editor.selection.end);
+        const next = addComment(state, editor.document.getText(), startOffset, endOffset, body, config);
+        stateByDocument.set(editor.document.uri.toString(), next);
+        refresh();
+      } catch (err) {
+        explainMutationError(err);
+      }
     }),
 
     vscode.commands.registerCommand('mdCollab.replyToThread', async (argThreadId?: string) => {
@@ -233,9 +262,13 @@ export function activate(context: vscode.ExtensionContext) {
       const body = await vscode.window.showInputBox({ prompt: 'Reply text' });
       if (!body) return;
 
-      const next = addReply(state, threadId, body, config);
-      stateByDocument.set(editor.document.uri.toString(), next);
-      refresh();
+      try {
+        const next = addReply(state, threadId, body, config);
+        stateByDocument.set(editor.document.uri.toString(), next);
+        refresh();
+      } catch (err) {
+        explainMutationError(err);
+      }
     }),
 
     vscode.commands.registerCommand('mdCollab.resolveThread', async (argThreadId?: string) => {
@@ -246,9 +279,13 @@ export function activate(context: vscode.ExtensionContext) {
       if (!requireAuthor(config)) return;
       const threadId = await threadIdFromArgOrPick(state, 'open', argThreadId);
       if (!threadId) return;
-      const next = resolve(state, threadId, config);
-      stateByDocument.set(editor.document.uri.toString(), next);
-      refresh();
+      try {
+        const next = resolve(state, threadId, config);
+        stateByDocument.set(editor.document.uri.toString(), next);
+        refresh();
+      } catch (err) {
+        explainMutationError(err);
+      }
     }),
 
     vscode.commands.registerCommand('mdCollab.reopenThread', async (argThreadId?: string) => {
@@ -259,9 +296,13 @@ export function activate(context: vscode.ExtensionContext) {
       if (!requireAuthor(config)) return;
       const threadId = await threadIdFromArgOrPick(state, 'resolved', argThreadId);
       if (!threadId) return;
-      const next = reopen(state, threadId, config);
-      stateByDocument.set(editor.document.uri.toString(), next);
-      refresh();
+      try {
+        const next = reopen(state, threadId, config);
+        stateByDocument.set(editor.document.uri.toString(), next);
+        refresh();
+      } catch (err) {
+        explainMutationError(err);
+      }
     }),
 
     vscode.commands.registerCommand('mdCollab.reanchorCurrentFile', async () => {
