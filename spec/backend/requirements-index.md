@@ -17,7 +17,7 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 - **MDC-BE-011**: Fixture corpus covers required anchor-drift scenarios.
 - **MDC-BE-012**: Backend behavior is test-driven and regression-guarded.
 - **MDC-BE-013**: v0.1 known limitation on concurrent logical write conflicts is explicitly documented.
-- **MDC-BE-014**: Author identity resolution and `verified` semantics are explicitly defined.
+- **MDC-BE-014**: v0.1 enforces runtime author payload validation on all mutation operations (`author_id`, `author_label`, `verified` present/valid). Full identity resolution-order behavior is deferred.
 
 ## Mapping
 
@@ -28,4 +28,4 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 | MDC-BE-008..010 | `spec-for-reanchoring-engine.md` | deterministic fixture replay |
 | MDC-BE-011 | `spec-for-anchor-test-fixtures.md` | fixture completeness checks |
 | MDC-BE-012 | `spec-for-backend-implementation-plan-tdd-v0.md` | CI test plan + changelog gate |
-| MDC-BE-014 | `spec-for-author-identity-v0.md` | identity resolution tests + config fixtures |
+| MDC-BE-014 | `spec-for-author-identity-v0.md` | runtime author validation tests across all mutation ops |

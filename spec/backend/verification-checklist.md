@@ -24,10 +24,10 @@ Use before calling backend spec changes "ready".
 - [ ] Re-anchoring reason codes emitted for every run.
 - [ ] Confidence transitions persist correctly.
 
-## D) Identity checks
-- [ ] Author resolution order behaves as specified.
-- [ ] `verified` semantics are respected (`true|false|null`).
-- [ ] Writes are blocked when required author settings are missing.
+## D) Identity checks (v0.1 narrowed scope)
+- [ ] Runtime author payload validation is enforced on all mutation operations.
+- [ ] `verified` field is present and constrained to `true|false|null`.
+- [ ] Writes are blocked when required author payload is missing/invalid.
 
 ## E) Fixture checks
 - [ ] Required scenario classes all present.

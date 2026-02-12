@@ -3,7 +3,9 @@
 Status: v0.1 draft
 
 ## 1. Scope
-Defines how `author_id`, `author_label`, and `verified` are produced in MVP.
+Defines v0.1 runtime author payload requirements for backend mutation operations.
+
+v0.1 explicitly narrows scope to payload validation. Extension identity resolution-order behavior (settings/repo/git fallback) is deferred to a later milestone.
 
 ## 1.1 Requirement IDs covered
 - MDC-BE-014
@@ -14,23 +16,26 @@ Required per thread and message author object:
 2. `author_label` (human-readable display name)
 3. `verified` (`true | false | null`)
 
-## 3. Resolution order (extension)
-1. Explicit VS Code setting: `mdCollab.authorId` and `mdCollab.authorLabel`.
-2. Repo config file (if present): `.md-collab-authors.json`.
-3. Git config fallback (`user.name`, `user.email`) transformed to `author_id`.
+## 3. Runtime validation rules (normative for v0.1)
+1. Every mutation operation must receive a valid author payload.
+2. Required fields:
+   - `author_id` non-empty string
+   - `author_label` non-empty string
+   - `verified` in `true|false|null`
+3. Missing/invalid payload must fail with `AUTHOR_INVALID`.
 
-If no source resolves, extension must refuse write and prompt for explicit author configuration.
+## 4. Mutation operations covered
+- `createThread`
+- `reply`
+- `editMessage` (via `editor`)
+- `resolveThread` (via `actor`)
+- `reopenThread` (via `actor`)
 
-## 4. Resolution rules (agent)
-1. Agent must set `author_id` and `author_label` explicitly in operation context.
-2. Agent may set `verified=null` by default in v0.1.
-
-## 5. `verified` semantics (v0.1)
-- `true`: value matched a trusted mapping in repo config.
-- `false`: value mismatched configured trusted mapping.
-- `null`: no trust decision available.
+## 5. Deferred (post-v0.1)
+1. Extension resolution order (`settings -> repo config -> git fallback`).
+2. Trusted mapping evaluation semantics for assigning `verified=true/false`.
 
 ## 6. Acceptance criteria
-1. Extension always emits deterministic author payload from same config state.
-2. Agent-generated comments include explicit author fields.
-3. `verified` meaning is consistently interpreted across UI and backend.
+1. Backend rejects missing/invalid author payload on all mutation ops.
+2. Backend tests explicitly cover rejection paths for each mutation op.
+3. Valid payloads pass and preserve author fields in output structures.
