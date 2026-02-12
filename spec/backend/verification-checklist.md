@@ -35,6 +35,6 @@ Use before calling backend spec changes "ready".
 - [ ] Heavy rewrite case returns `broken` (unless high-signal recovery expected).
 
 ## F) Regression controls
-- [ ] Baseline fixture outputs unchanged or explicitly reviewed.
-- [ ] Changelog/notes include any threshold or algorithm changes.
-- [ ] CI target for backend test suite passes.
+- [ ] Baseline fixture outputs unchanged or explicitly reviewed (see `tests/fixtures/anchors/BASELINE-GOVERNANCE.md`).
+- [ ] Changelog/notes include any threshold or algorithm changes (see `docs/backend-changelog.md`).
+- [ ] CI target for backend test suite passes (see `.github/workflows/backend-tests.yml`).

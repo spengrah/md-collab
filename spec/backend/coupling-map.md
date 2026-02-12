@@ -15,3 +15,6 @@ This file mirrors the spec/guidance pairing style from the assurances pattern.
 A spec change should either:
 1. require no implementation-behavior guidance change (explicitly noted), or
 2. include a paired guidance update in the same commit.
+
+## No-change rationale references
+- 2026-02-12 checklist/process-only update: `./no-guidance-change-rationale.md`.
