@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { buildAnchor } from './anchor.js';
 import { error } from './errors.js';
 import type {
+  Author,
   CreateThreadInput,
   EditMessageInput,
   ReanchorOutput,
@@ -14,6 +15,53 @@ import type {
 const clone = <T>(value: T): T => structuredClone(value);
 const nowUtc = () => new Date().toISOString();
 
+const isValidAuthor = (author: Author | undefined): author is Author =>
+  !!author &&
+  typeof author.author_id === 'string' &&
+  author.author_id.trim().length > 0 &&
+  typeof author.author_label === 'string' &&
+  author.author_label.trim().length > 0 &&
+  (typeof author.verified === 'boolean' || author.verified === null);
+
+const assertAuthor = (author: Author | undefined): asserts author is Author => {
+  if (!isValidAuthor(author)) {
+    error('AUTHOR_INVALID', 'author payload is required and must include author_id, author_label, verified');
+  }
+};
+
+const collectIds = (sidecar: Sidecar): { threadIds: Set<string>; messageIds: Set<string> } => {
+  const threadIds = new Set<string>();
+  const messageIds = new Set<string>();
+
+  for (const thread of sidecar.threads) {
+    threadIds.add(thread.thread_id);
+    for (const message of thread.messages) {
+      messageIds.add(message.message_id);
+    }
+  }
+
+  return { threadIds, messageIds };
+};
+
+const assertUniqueId = (id: string, existing: Set<string>, kind: 'thread_id' | 'message_id') => {
+  if (existing.has(id)) {
+    error('ID_CONFLICT', `${kind} already exists: ${id}`);
+  }
+};
+
+const resolveUniqueId = (requestedId: string | undefined, existing: Set<string>, kind: 'thread_id' | 'message_id'): string => {
+  if (requestedId) {
+    assertUniqueId(requestedId, existing, kind);
+    return requestedId;
+  }
+
+  let next = randomUUID();
+  while (existing.has(next)) {
+    next = randomUUID();
+  }
+  return next;
+};
+
 const findThread = (threads: Thread[], threadId: string): Thread => {
   const thread = threads.find((t) => t.thread_id === threadId);
   if (!thread) error('THREAD_NOT_FOUND', `thread not found: ${threadId}`);
@@ -21,10 +69,13 @@ const findThread = (threads: Thread[], threadId: string): Thread => {
 };
 
 export const createThread = (input: CreateThreadInput): Sidecar => {
+  assertAuthor(input.author);
+
   const next = clone(input.sidecar);
   const ts = input.now ?? nowUtc();
-  const thread_id = input.threadId ?? randomUUID();
-  const message_id = input.messageId ?? randomUUID();
+  const { threadIds, messageIds } = collectIds(next);
+  const thread_id = resolveUniqueId(input.threadId, threadIds, 'thread_id');
+  const message_id = resolveUniqueId(input.messageId, messageIds, 'message_id');
 
   const thread: Thread = {
     thread_id,
@@ -49,11 +100,16 @@ export const createThread = (input: CreateThreadInput): Sidecar => {
 };
 
 export const reply = (input: ReplyInput): Sidecar => {
+  assertAuthor(input.author);
+
   const next = clone(input.sidecar);
   const thread = findThread(next.threads, input.threadId);
   const ts = input.now ?? nowUtc();
+  const { messageIds } = collectIds(next);
+  const message_id = resolveUniqueId(input.messageId, messageIds, 'message_id');
+
   thread.messages.push({
-    message_id: input.messageId ?? randomUUID(),
+    message_id,
     author: input.author,
     body: input.body,
     created_at: ts,

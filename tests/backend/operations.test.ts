@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { createThread, editMessage, parseSidecar, reopenThread, reply, resolveThread, serializeDeterministic } from '../../src/index.js';
+import {
+  MdCollabError,
+  createThread,
+  editMessage,
+  parseSidecar,
+  reopenThread,
+  reply,
+  resolveThread,
+  serializeDeterministic,
+} from '../../src/index.js';
 
 const base = parseSidecar(`{
   "schema_version": "0.1.0",
@@ -55,5 +64,99 @@ describe('core sidecar operations', () => {
     const s1 = serializeDeterministic(reopened);
     const s2 = serializeDeterministic(reopened);
     expect(s1).toBe(s2);
+  });
+
+  it('rejects ID collisions for thread_id/message_id with typed error', () => {
+    const text = 'Alpha\nTarget sentence here.\nOmega';
+    const start = text.indexOf('Target');
+    const end = start + 'Target sentence here.'.length;
+
+    const first = createThread({
+      sidecar: base,
+      text,
+      startOffsetUtf16: start,
+      endOffsetUtf16: end,
+      body: 'Initial note',
+      author,
+      threadId: 't1',
+      messageId: 'm1',
+      now: '2026-02-12T20:00:00Z',
+    });
+
+    try {
+      createThread({
+        sidecar: first,
+        text,
+        startOffsetUtf16: start,
+        endOffsetUtf16: end,
+        body: 'Second',
+        author,
+        threadId: 't1',
+        messageId: 'm2',
+      });
+      throw new Error('expected collision');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MdCollabError);
+      expect((e as MdCollabError).code).toBe('ID_CONFLICT');
+    }
+
+    try {
+      reply({
+        sidecar: first,
+        threadId: 't1',
+        body: 'dup message id',
+        author,
+        messageId: 'm1',
+      });
+      throw new Error('expected collision');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MdCollabError);
+      expect((e as MdCollabError).code).toBe('ID_CONFLICT');
+    }
+  });
+
+  it('enforces runtime author validation on write operations', () => {
+    const text = 'Alpha\nTarget sentence here.\nOmega';
+    const start = text.indexOf('Target');
+    const end = start + 'Target sentence here.'.length;
+
+    try {
+      createThread({
+        sidecar: base,
+        text,
+        startOffsetUtf16: start,
+        endOffsetUtf16: end,
+        body: 'Initial note',
+        author: { author_id: '', author_label: 'Spencer', verified: null },
+      });
+      throw new Error('expected author error');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MdCollabError);
+      expect((e as MdCollabError).code).toBe('AUTHOR_INVALID');
+    }
+
+    const created = createThread({
+      sidecar: base,
+      text,
+      startOffsetUtf16: start,
+      endOffsetUtf16: end,
+      body: 'Initial note',
+      author,
+      threadId: 't1',
+      messageId: 'm1',
+    });
+
+    try {
+      reply({
+        sidecar: created,
+        threadId: 't1',
+        body: 'Reply',
+        author: { author_id: 'x', author_label: '', verified: null },
+      });
+      throw new Error('expected author error');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MdCollabError);
+      expect((e as MdCollabError).code).toBe('AUTHOR_INVALID');
+    }
   });
 });

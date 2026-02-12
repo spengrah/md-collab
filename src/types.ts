@@ -95,12 +95,14 @@ export interface EditMessageInput {
   threadId: string;
   messageId: string;
   newBody: string;
+  editor: Author;
   now?: string;
 }
 
 export interface ToggleThreadInput {
   sidecar: Sidecar;
   threadId: string;
+  actor: Author;
   now?: string;
 }
 
