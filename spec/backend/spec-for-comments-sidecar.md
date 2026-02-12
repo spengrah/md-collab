@@ -113,6 +113,8 @@ Author field semantics are defined in:
 - `MESSAGE_NOT_FOUND`
 - `WRITE_CONFLICT`
 - `ANCHOR_INVALID`
+- `ID_CONFLICT` (thread/message ID collision or attempted reuse)
+- `AUTHOR_INVALID` (missing/invalid runtime author payload on write)
 
 ## 10. Versioning
 - `schema_version` is required.
