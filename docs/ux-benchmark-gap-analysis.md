@@ -32,6 +32,23 @@
 1. **Further polish parity with mature products**
    - Examples: richer inline compose UI, avatar rendering, per-message action menus, keyboard-only thread navigation.
 
+## Shipped UX features mapped to benchmark gaps
+
+| Shipped feature | Benchmark gap link |
+|---|---|
+| Context menu add-comment action on markdown selection | P0.1 Fast add-comment affordances |
+| Selection-guarded add-comment keybinding | P0.1 Fast add-comment affordances |
+| Panel click to open/reveal anchor | P0.2 Panel-to-document navigation |
+| Broken-anchor fallback + explicit warning/no-location message | P0.2 Panel-to-document navigation |
+| Transient highlight after navigation jump | P0.2 Panel-to-document navigation |
+| Threaded panel with chronological messages | P1.1 Conversation-style panel rendering |
+| Author + timestamp per message row | P1.1 Conversation-style panel rendering |
+| Inline reply action per thread | P1.1 Conversation-style panel rendering |
+| Sidecar file watch and auto-reload | P0.3 Lost-update protection for sidecar writes |
+| Pre-write mtime/hash checkpoint guard | P0.3 Lost-update protection for sidecar writes |
+| Conflict abort path with explicit user guidance | P0.3 Lost-update protection for sidecar writes |
+| Manual sidecar reload command | P0.3 Lost-update protection for sidecar writes |
+
 ## Acceptance criteria by gap
 
 ### P0.1 Add-comment ergonomics
