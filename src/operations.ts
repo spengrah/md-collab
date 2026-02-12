@@ -120,6 +120,8 @@ export const reply = (input: ReplyInput): Sidecar => {
 };
 
 export const editMessage = (input: EditMessageInput): Sidecar => {
+  assertAuthor(input.editor);
+
   const next = clone(input.sidecar);
   const thread = findThread(next.threads, input.threadId);
   const message = thread.messages.find((m) => m.message_id === input.messageId);
@@ -132,6 +134,8 @@ export const editMessage = (input: EditMessageInput): Sidecar => {
 };
 
 export const resolveThread = (input: ToggleThreadInput): Sidecar => {
+  assertAuthor(input.actor);
+
   const next = clone(input.sidecar);
   const thread = findThread(next.threads, input.threadId);
   thread.status = 'resolved';
@@ -140,6 +144,8 @@ export const resolveThread = (input: ToggleThreadInput): Sidecar => {
 };
 
 export const reopenThread = (input: ToggleThreadInput): Sidecar => {
+  assertAuthor(input.actor);
+
   const next = clone(input.sidecar);
   const thread = findThread(next.threads, input.threadId);
   thread.status = 'open';

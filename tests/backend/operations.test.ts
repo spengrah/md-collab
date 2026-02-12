@@ -50,11 +50,12 @@ describe('core sidecar operations', () => {
       threadId: 't1',
       messageId: 'm2',
       newBody: 'Reply edited',
+      editor: author,
       now: '2026-02-12T20:02:00Z',
     });
 
-    const resolved = resolveThread({ sidecar: edited, threadId: 't1', now: '2026-02-12T20:03:00Z' });
-    const reopened = reopenThread({ sidecar: resolved, threadId: 't1', now: '2026-02-12T20:04:00Z' });
+    const resolved = resolveThread({ sidecar: edited, threadId: 't1', actor: author, now: '2026-02-12T20:03:00Z' });
+    const reopened = reopenThread({ sidecar: resolved, threadId: 't1', actor: author, now: '2026-02-12T20:04:00Z' });
 
     expect(reopened.threads[0].status).toBe('open');
     expect(reopened.threads[0].messages).toHaveLength(2);
@@ -115,7 +116,7 @@ describe('core sidecar operations', () => {
     }
   });
 
-  it('enforces runtime author validation on write operations', () => {
+  it('enforces runtime author validation on every mutation path', () => {
     const text = 'Alpha\nTarget sentence here.\nOmega';
     const start = text.indexOf('Target');
     const end = start + 'Target sentence here.'.length;
@@ -152,6 +153,44 @@ describe('core sidecar operations', () => {
         threadId: 't1',
         body: 'Reply',
         author: { author_id: 'x', author_label: '', verified: null },
+      });
+      throw new Error('expected author error');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MdCollabError);
+      expect((e as MdCollabError).code).toBe('AUTHOR_INVALID');
+    }
+
+    try {
+      editMessage({
+        sidecar: created,
+        threadId: 't1',
+        messageId: 'm1',
+        newBody: 'Edited',
+        editor: { author_id: 'x', author_label: 'X', verified: undefined } as any,
+      });
+      throw new Error('expected author error');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MdCollabError);
+      expect((e as MdCollabError).code).toBe('AUTHOR_INVALID');
+    }
+
+    try {
+      resolveThread({
+        sidecar: created,
+        threadId: 't1',
+        actor: { author_id: 'x', author_label: '', verified: null },
+      });
+      throw new Error('expected author error');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MdCollabError);
+      expect((e as MdCollabError).code).toBe('AUTHOR_INVALID');
+    }
+
+    try {
+      reopenThread({
+        sidecar: created,
+        threadId: 't1',
+        actor: undefined as any,
       });
       throw new Error('expected author error');
     } catch (e) {
