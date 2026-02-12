@@ -75,6 +75,7 @@
     }
   },
   "scripts": {
+    "precompile": "npm --prefix .. run build",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./"
   },
