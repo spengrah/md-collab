@@ -1,0 +1,12 @@
+{
+  "threads": [
+    {
+      "thread_id": "t-split-1",
+      "anchor": {
+        "primary": {"start": {"line": 1, "column": 28, "offset_utf16": 27}, "end": {"line": 1, "column": 41, "offset_utf16": 40}},
+        "fallback": {"quote": "target phrase", "prefix": "paragraph with ", "suffix": " in it.", "quote_hash": "sha256:q3", "context_hash": "sha256:c3"},
+        "anchor_confidence": "high"
+      }
+    }
+  ]
+}

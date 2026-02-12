@@ -1,0 +1,12 @@
+{
+  "threads": [
+    {
+      "thread_id": "t-move-1",
+      "anchor": {
+        "primary": {"start": {"line": 2, "column": 1, "offset_utf16": 8}, "end": {"line": 2, "column": 29, "offset_utf16": 36}},
+        "fallback": {"quote": "Important block starts here.", "prefix": "Heading\n", "suffix": "\nEnd.", "quote_hash": "sha256:q5", "context_hash": "sha256:c5"},
+        "anchor_confidence": "high"
+      }
+    }
+  ]
+}

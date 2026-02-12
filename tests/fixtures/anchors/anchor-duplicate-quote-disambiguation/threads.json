@@ -1,0 +1,12 @@
+{
+  "threads": [
+    {
+      "thread_id": "t-dup-1",
+      "anchor": {
+        "primary": {"start": {"line": 1, "column": 12, "offset_utf16": 11}, "end": {"line": 1, "column": 31, "offset_utf16": 30}},
+        "fallback": {"quote": "target text appears", "prefix": "Section A: ", "suffix": " here.", "quote_hash": "sha256:q4", "context_hash": "sha256:c4"},
+        "anchor_confidence": "high"
+      }
+    }
+  ]
+}

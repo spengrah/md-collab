@@ -1,0 +1,46 @@
+{
+  "schema_version": "0.1.0",
+  "document": {
+    "path": "doc.md"
+  },
+  "threads": [
+    {
+      "thread_id": "thread-1",
+      "status": "open",
+      "anchor": {
+        "primary": {
+          "start": { "line": 1, "column": 1, "offset_utf16": 0 },
+          "end": { "line": 1, "column": 5, "offset_utf16": 4 }
+        },
+        "fallback": {
+          "quote": "Hello",
+          "prefix": "",
+          "suffix": " world",
+          "quote_hash": "sha256:abc",
+          "context_hash": "sha256:def"
+        },
+        "anchor_confidence": "high"
+      },
+      "author": {
+        "author_id": "spencer",
+        "author_label": "Spencer",
+        "verified": null
+      },
+      "messages": [
+        {
+          "message_id": "m-1",
+          "author": {
+            "author_id": "spencer",
+            "author_label": "Spencer",
+            "verified": null
+          },
+          "body": "Looks good",
+          "created_at": "2026-02-12T20:00:00Z",
+          "edited_at": null
+        }
+      ],
+      "created_at": "2026-02-12T20:00:00Z",
+      "updated_at": "2026-02-12T20:00:00Z"
+    }
+  ]
+}

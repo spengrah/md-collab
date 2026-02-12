@@ -1,0 +1,47 @@
+{
+  "schema_version": "0.1.0",
+  "document": {
+    "path": "notes/plan.md"
+  },
+  "threads": [
+    {
+      "thread_id": "thread-2",
+      "status": "resolved",
+      "anchor": {
+        "primary": {
+          "start": { "line": 3, "column": 1, "offset_utf16": 22 },
+          "end": { "line": 3, "column": 8, "offset_utf16": 29 },
+          "doc_revision": "rev-1"
+        },
+        "fallback": {
+          "quote": "section",
+          "prefix": "A ",
+          "suffix": " header",
+          "quote_hash": "sha256:q",
+          "context_hash": "sha256:c"
+        },
+        "anchor_confidence": "medium"
+      },
+      "author": {
+        "author_id": "lyle",
+        "author_label": "Lyle",
+        "verified": true
+      },
+      "messages": [
+        {
+          "message_id": "m-2",
+          "author": {
+            "author_id": "lyle",
+            "author_label": "Lyle",
+            "verified": true
+          },
+          "body": "Resolved after update.",
+          "created_at": "2026-02-12T20:10:00Z",
+          "edited_at": "2026-02-12T20:11:00Z"
+        }
+      ],
+      "created_at": "2026-02-12T20:10:00Z",
+      "updated_at": "2026-02-12T20:11:00Z"
+    }
+  ]
+}

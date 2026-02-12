@@ -1,0 +1,5 @@
+{
+  "results": [
+    {"thread_id": "t-broken-1", "expected_confidence": "broken", "expected_reason_code": "broken", "expected_start": null, "expected_end": null, "requires_manual_relink": true}
+  ]
+}

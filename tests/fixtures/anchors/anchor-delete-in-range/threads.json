@@ -1,0 +1,12 @@
+{
+  "threads": [
+    {
+      "thread_id": "t-delete-1",
+      "anchor": {
+        "primary": {"start": {"line": 2, "column": 1, "offset_utf16": 6}, "end": {"line": 2, "column": 21, "offset_utf16": 26}},
+        "fallback": {"quote": "Target sentence here.", "prefix": "Alpha\n", "suffix": "\nOmega", "quote_hash": "sha256:q2", "context_hash": "sha256:c2"},
+        "anchor_confidence": "high"
+      }
+    }
+  ]
+}

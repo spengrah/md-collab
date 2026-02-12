@@ -1,0 +1,5 @@
+{
+  "results": [
+    {"thread_id": "t-delete-1", "expected_confidence": "low", "expected_reason_code": "fuzzy_recovery", "expected_start": {"line": 2, "column": 1}, "expected_end": {"line": 2, "column": 13}, "requires_manual_relink": false}
+  ]
+}

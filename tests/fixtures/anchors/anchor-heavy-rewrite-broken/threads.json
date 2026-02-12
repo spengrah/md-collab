@@ -1,0 +1,12 @@
+{
+  "threads": [
+    {
+      "thread_id": "t-broken-1",
+      "anchor": {
+        "primary": {"start": {"line": 1, "column": 1, "offset_utf16": 0}, "end": {"line": 1, "column": 25, "offset_utf16": 24}},
+        "fallback": {"quote": "unique phrase", "prefix": "Original argument with ", "suffix": " and framing.", "quote_hash": "sha256:q6", "context_hash": "sha256:c6"},
+        "anchor_confidence": "high"
+      }
+    }
+  ]
+}

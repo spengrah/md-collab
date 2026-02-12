@@ -1,0 +1,5 @@
+{
+  "results": [
+    {"thread_id": "t-newline-1", "expected_confidence": "high", "expected_reason_code": "exact_positional", "expected_start": {"line": 2, "column": 1}, "expected_end": {"line": 2, "column": 17}, "requires_manual_relink": false}
+  ]
+}
