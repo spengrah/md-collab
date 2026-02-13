@@ -4,12 +4,12 @@ Status: ready to execute
 Depends on: v0.1 extension baseline + frontend v0.2 spec set
 
 ## P0 — Data model and compatibility
-- [ ] Add additive thread/message version-context fields per `spec-for-git-review-thread-model-v0.md`.
+- [ ] Add additive thread/message version-context fields per `../backend/spec-for-git-review-thread-model.md`.
 - [ ] Preserve v0.1 read compatibility and lazy-populate new fields.
 - [ ] Add reason code enum plumbing and validation.
 
 ## P0 — Relevance engine
-- [ ] Implement deterministic relevance pipeline per `spec-for-version-aware-outdatedness-v0.md`.
+- [ ] Implement deterministic relevance pipeline per `../backend/spec-for-version-aware-outdatedness.md`.
 - [ ] Add transition rules (`active/outdated/orphaned`) with explainable reason mapping.
 - [ ] Add cache + invalidation triggers (save/sidecar change/head change/manual reload).
 

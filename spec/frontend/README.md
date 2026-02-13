@@ -1,31 +1,28 @@
 # Frontend Spec Index
 
-This folder now contains two phases:
+This folder contains active frontend UX specs plus archived baseline material.
 
-- **v0.1 (MVP UX hardening)** — implemented baseline
-- **v0.2 (PR-review-style evolution)** — version-aware data model + tighter on-document UX
+## Active canonical frontend specs
+1. `spec-for-pr-review-overlay-ui.md`
+2. `spec-for-suggestion-workflow.md`
+3. `spec-for-ux-benchmark-comparison.md`
+4. `pr-review-ux-implementation-checklist.md`
 
-## Current canonical set (v0.2 planning)
+## Active canonical frontend guidance
+1. `../../guidance/frontend/guidance-for-pr-review-overlay-ui.md`
+2. `../../guidance/frontend/guidance-for-suggestion-workflow.md`
 
-### Spec documents
-1. `spec-for-git-review-thread-model-v0.md`
-2. `spec-for-pr-review-overlay-ui-v0.md`
-3. `spec-for-version-aware-outdatedness-v0.md`
-4. `spec-for-suggestion-workflow-v0.md`
-5. `spec-for-ux-benchmark-comparison-v0.md` (still canonical)
+## Backend-canonical docs used by frontend UX
+(These live in backend because they define shared/domain model semantics.)
+1. `../backend/spec-for-git-review-thread-model.md`
+2. `../backend/spec-for-version-aware-outdatedness.md`
+3. `../../guidance/backend/guidance-for-git-review-thread-model.md`
+4. `../../guidance/backend/guidance-for-version-aware-outdatedness.md`
 
-### Guidance documents
-1. `../../guidance/frontend/guidance-for-git-review-thread-model-v0.md`
-2. `../../guidance/frontend/guidance-for-pr-review-overlay-ui-v0.md`
-3. `../../guidance/frontend/guidance-for-version-aware-outdatedness-v0.md`
-4. `../../guidance/frontend/guidance-for-suggestion-workflow-v0.md`
+## Archived v0.1 baseline docs
+- `archive/v0.1/spec-for-comment-authoring-ux.md`
+- `archive/v0.1/spec-for-thread-navigation.md`
+- `archive/v0.1/spec-for-threaded-panel.md`
+- `archive/v0.1/spec-for-sidecar-sync-and-write-safety.md`
 
-## Legacy v0.1 docs (superseded in scope)
-These are **not deleted** because they remain useful implementation history, but their scope is now narrower than the new PR-review-style target.
-
-- `spec-for-comment-authoring-ux-v0.md`
-- `spec-for-thread-navigation-v0.md`
-- `spec-for-threaded-panel-v0.md`
-- `spec-for-sidecar-sync-and-write-safety-v0.md`
-
-Use legacy docs for baseline behavior references; use v0.2 docs for forward implementation decisions.
+Use archived docs for historical context only.

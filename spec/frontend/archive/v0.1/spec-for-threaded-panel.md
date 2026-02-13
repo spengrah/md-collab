@@ -1,7 +1,7 @@
 # spec-for-threaded-panel-v0
 
 Status: superseded-in-scope (v0.1 baseline retained)  
-Superseded by: `spec-for-pr-review-overlay-ui-v0.md` and `spec-for-git-review-thread-model-v0.md` for forward UX direction.
+Superseded by: `spec-for-pr-review-overlay-ui.md` and `../backend/spec-for-git-review-thread-model.md` for forward UX direction.
 
 Scope: conversation-style panel rendering
 

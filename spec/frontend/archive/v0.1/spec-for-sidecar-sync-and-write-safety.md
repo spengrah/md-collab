@@ -1,7 +1,7 @@
 # spec-for-sidecar-sync-and-write-safety-v0
 
 Status: partially superseded (v0.1 baseline retained)  
-Extended by: `spec-for-git-review-thread-model-v0.md` and `spec-for-version-aware-outdatedness-v0.md`.
+Extended by: `../backend/spec-for-git-review-thread-model.md` and `../backend/spec-for-version-aware-outdatedness.md`.
 
 Scope: external sidecar changes, refresh, and lost-update mitigation
 

@@ -14,6 +14,8 @@ Core backend scope for MVP:
 - `spec-for-anchor-test-fixtures.md`
 - `spec-for-backend-implementation-plan-tdd-v0.md`
 - `spec-for-author-identity-v0.md`
+- `spec-for-git-review-thread-model.md` (v0.2 additive model extensions)
+- `spec-for-version-aware-outdatedness.md` (v0.2 relevance state evaluation)
 
 ## Traceability + assurance-style structure
 - `requirements-index.md` (stable requirement IDs)
@@ -27,3 +29,5 @@ Core backend scope for MVP:
 - `../../guidance/backend/guidance-for-anchor-test-fixtures.md`
 - `../../guidance/backend/guidance-for-backend-implementation-plan-tdd-v0.md`
 - `../../guidance/backend/guidance-for-author-identity-v0.md`
+- `../../guidance/backend/guidance-for-git-review-thread-model.md`
+- `../../guidance/backend/guidance-for-version-aware-outdatedness.md`
