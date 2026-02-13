@@ -1,6 +1,6 @@
 # spec-for-version-aware-outdatedness-v0
 
-Status: draft v0.2  
+Status: superseded (merged into `../../spec-for-review-state-and-versioning.md`)  
 Scope: deterministic outdated/orphaned detection against Git history and working tree
 
 ## 1. Goal

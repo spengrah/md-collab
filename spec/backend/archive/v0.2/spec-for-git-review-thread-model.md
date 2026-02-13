@@ -1,6 +1,6 @@
 # spec-for-git-review-thread-model-v0
 
-Status: draft v0.2  
+Status: superseded (merged into `../../spec-for-review-state-and-versioning.md`)  
 Scope: version-aware thread/message data model for PR-review-style UX in VS Code
 
 ## 1. Goal

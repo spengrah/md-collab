@@ -1,6 +1,6 @@
 # spec-for-pr-review-overlay-ui-v0
 
-Status: draft v0.2  
+Status: superseded (merged into `../../spec-for-review-interaction-model.md`)  
 Scope: on-document PR-review-style overlay UX in native VS Code editor
 
 ## 1. Goal

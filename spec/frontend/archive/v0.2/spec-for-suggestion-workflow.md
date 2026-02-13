@@ -1,6 +1,6 @@
 # spec-for-suggestion-workflow-v0
 
-Status: draft v0.2  
+Status: superseded (merged into `../../spec-for-review-interaction-model.md`)  
 Scope: PR-review-style suggestion proposals and apply/reject flow (markdown sidecar-first)
 
 ## 1. Goal

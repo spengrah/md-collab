@@ -29,3 +29,4 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 | MDC-BE-011 | `spec-for-anchor-test-fixtures.md` | fixture completeness checks |
 | MDC-BE-012 | `spec-for-backend-implementation-plan-tdd.md` | CI test plan + changelog gate |
 | MDC-BE-014 | `spec-for-author-identity.md` | runtime author validation tests across all mutation ops |
+| MDC-BE-015 | `spec-for-review-state-and-versioning.md` | version-context field compatibility + relevance-state determinism tests |

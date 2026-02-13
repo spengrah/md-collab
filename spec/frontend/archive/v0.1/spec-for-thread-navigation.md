@@ -1,7 +1,7 @@
 # spec-for-thread-navigation-v0
 
 Status: superseded-in-scope (v0.1 baseline retained)  
-Superseded by: `spec-for-pr-review-overlay-ui.md` and `../backend/spec-for-version-aware-outdatedness.md` for forward UX direction.
+Superseded by: `../../spec-for-review-interaction-model.md` and `../../../backend/spec-for-review-state-and-versioning.md` for forward UX direction.
 
 Scope: panel-to-document navigation
 

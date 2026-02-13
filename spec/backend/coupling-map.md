@@ -10,6 +10,7 @@ This file mirrors the spec/guidance pairing style from the assurances pattern.
 | `spec-for-anchor-test-fixtures.md` | `../../guidance/backend/guidance-for-anchor-test-fixtures.md` | fixture discipline + TDD workflow |
 | `spec-for-backend-implementation-plan-tdd.md` | `../../guidance/backend/guidance-for-backend-implementation-plan-tdd.md` | delivery sequencing + regression control |
 | `spec-for-author-identity.md` | `../../guidance/backend/guidance-for-author-identity.md` | deterministic identity + verification semantics |
+| `spec-for-review-state-and-versioning.md` | `../../guidance/backend/guidance-for-review-state-and-versioning.md` | unified version context + relevance evaluation contract |
 
 ## Coupling rule
 A spec change should either:

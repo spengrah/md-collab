@@ -1,11 +1,12 @@
-# Backend Spec Index (v0.1)
+# Backend Spec Index
 
-Core backend scope for MVP:
+Core backend scope:
 1. Comments sidecar contract
 2. Anchor model
 3. Re-anchoring engine
-4. Anchor fixture/test corpus
-5. TDD implementation sequence
+4. Fixture/test corpus
+5. Identity + implementation plan
+6. Review-state and versioning model (v0.2)
 
 ## Normative spec docs
 - `spec-for-comments-sidecar.md`
@@ -14,13 +15,12 @@ Core backend scope for MVP:
 - `spec-for-anchor-test-fixtures.md`
 - `spec-for-backend-implementation-plan-tdd.md`
 - `spec-for-author-identity.md`
-- `spec-for-git-review-thread-model.md` (v0.2 additive model extensions)
-- `spec-for-version-aware-outdatedness.md` (v0.2 relevance state evaluation)
+- `spec-for-review-state-and-versioning.md`
 
-## Traceability + assurance-style structure
-- `requirements-index.md` (stable requirement IDs)
-- `coupling-map.md` (spec↔guidance mapping)
-- `verification-checklist.md` (verification gate)
+## Traceability + assurance structure
+- `requirements-index.md`
+- `coupling-map.md`
+- `verification-checklist.md`
 
 ## Guidance docs
 - `../../guidance/backend/guidance-for-comments-sidecar.md`
@@ -29,5 +29,8 @@ Core backend scope for MVP:
 - `../../guidance/backend/guidance-for-anchor-test-fixtures.md`
 - `../../guidance/backend/guidance-for-backend-implementation-plan-tdd.md`
 - `../../guidance/backend/guidance-for-author-identity.md`
-- `../../guidance/backend/guidance-for-git-review-thread-model.md`
-- `../../guidance/backend/guidance-for-version-aware-outdatedness.md`
+- `../../guidance/backend/guidance-for-review-state-and-versioning.md`
+
+## Archived docs
+- `archive/v0.2/spec-for-git-review-thread-model.md`
+- `archive/v0.2/spec-for-version-aware-outdatedness.md`
