@@ -11,6 +11,7 @@ Define a single interaction contract for on-document overlays, thread actions, a
 2. **Inline signal layer**: end-of-line/inlay/CodeLens chips showing:
    - thread count
    - relevance badge (`active/outdated/orphaned`)
+   - timeline badge (`local draft|git|hybrid`)
    - quick actions (`Reply`, `Resolve/Reopen`, `Jump`, `View referenced version`, `Propose suggestion`)
 3. **Gutter marker layer**: markers for lines with threads.
 
@@ -49,8 +50,9 @@ Each suggestion must include:
 
 ## 5. Interaction behavior
 1. Clicking overlay signal focuses/selects associated anchor range.
-2. Hover shows concise thread summary (author, last message, relevance, suggestion status if present).
+2. Hover shows concise thread summary (author, last message, relevance, timeline, suggestion status if present).
 3. Thread/suggestion actions must not bypass sidecar conflict guards.
+4. When Git metadata is absent, UI must still provide full local-draft interaction flow with workspace timeline labels.
 
 ## 6. Apply/reject semantics
 1. Apply must verify:
@@ -65,6 +67,10 @@ Each suggestion must include:
 3. Orphaned: degraded style + explicit recovery action.
 4. Resolved overlays hidden by default; reveal toggle allowed.
 5. Suggestion status visible in both panel and overlay chips.
+6. Timeline badge styles:
+   - `local draft` for workspace-only context,
+   - `git` for commit-scoped context,
+   - `hybrid` when both are present.
 
 ## 8. Accessibility + performance
 1. Color-only encoding prohibited; icon/text/tooltip equivalents required.
@@ -77,4 +83,5 @@ Each suggestion must include:
 1. User can discover and act on thread/suggestion state without opening panel.
 2. Suggestion lifecycle is deterministic and auditable.
 3. Apply flow never silently mutates wrong span.
-4. UX is materially tighter than panel-only mode in Remote-SSH tests.
+4. Local pre-commit collaboration works fully without Git metadata.
+5. UX is materially tighter than panel-only mode in Remote-SSH tests.

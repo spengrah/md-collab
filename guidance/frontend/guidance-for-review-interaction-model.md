@@ -8,9 +8,11 @@ Treat overlay UX and suggestion flow as one coherent review interaction surface.
 2. Introduce overlay layers incrementally to control clutter.
 3. Keep suggestion states explicit and append-only in audit history.
 4. Prefer safe default on hash mismatch (`obsolete`, no write).
-5. Keep status chips compact but always explainable via tooltip/detail.
+5. Show timeline provenance chips (`local draft|git|hybrid`) consistently.
+6. Keep status chips compact but always explainable via tooltip/detail.
 
 ## Anti-patterns
 1. Duplicate write logic in overlay click handlers.
 2. Interactive overlays that obscure source text.
-3. Silent apply/reject outcomes without thread audit message.
+3. Requiring Git-only semantics in local draft workflows.
+4. Silent apply/reject outcomes without thread audit message.
