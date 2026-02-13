@@ -27,5 +27,5 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 | MDC-BE-007 | `spec-for-anchor-model.md` | anchor payload validation tests |
 | MDC-BE-008..010 | `spec-for-reanchoring-engine.md` | deterministic fixture replay |
 | MDC-BE-011 | `spec-for-anchor-test-fixtures.md` | fixture completeness checks |
-| MDC-BE-012 | `spec-for-backend-implementation-plan-tdd-v0.md` | CI test plan + changelog gate |
-| MDC-BE-014 | `spec-for-author-identity-v0.md` | runtime author validation tests across all mutation ops |
+| MDC-BE-012 | `spec-for-backend-implementation-plan-tdd.md` | CI test plan + changelog gate |
+| MDC-BE-014 | `spec-for-author-identity.md` | runtime author validation tests across all mutation ops |

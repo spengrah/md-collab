@@ -79,7 +79,7 @@ Defines the canonical sidecar format (`*.comments.json`) for storing comment thr
 
 ## 5.1 Author identity contract
 Author field semantics are defined in:
-- `spec-for-author-identity-v0.md`
+- `spec-for-author-identity.md`
 
 ## 6. Core operations (normative)
 1. `create_thread(range, initial_message, author)`

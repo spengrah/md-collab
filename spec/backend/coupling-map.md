@@ -8,8 +8,8 @@ This file mirrors the spec/guidance pairing style from the assurances pattern.
 | `spec-for-anchor-model.md` | `../../guidance/backend/guidance-for-anchor-model.md` | robust anchor payload creation |
 | `spec-for-reanchoring-engine.md` | `../../guidance/backend/guidance-for-reanchoring-engine.md` | conservative, trust-preserving reattachment |
 | `spec-for-anchor-test-fixtures.md` | `../../guidance/backend/guidance-for-anchor-test-fixtures.md` | fixture discipline + TDD workflow |
-| `spec-for-backend-implementation-plan-tdd-v0.md` | `../../guidance/backend/guidance-for-backend-implementation-plan-tdd-v0.md` | delivery sequencing + regression control |
-| `spec-for-author-identity-v0.md` | `../../guidance/backend/guidance-for-author-identity-v0.md` | deterministic identity + verification semantics |
+| `spec-for-backend-implementation-plan-tdd.md` | `../../guidance/backend/guidance-for-backend-implementation-plan-tdd.md` | delivery sequencing + regression control |
+| `spec-for-author-identity.md` | `../../guidance/backend/guidance-for-author-identity.md` | deterministic identity + verification semantics |
 
 ## Coupling rule
 A spec change should either:

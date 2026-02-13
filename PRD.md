@@ -127,7 +127,7 @@ Design principle: avoid false-positive reattachment.
 2. Collaboration assumes shared workspace access (SSH into agent workspace).
 3. Merge conventions are **not** a core MVP build input; they are maintained for future tracked mode.
 
-Authoritative future-mode policy: `spec/git-merge-conventions-v0.md`
+Authoritative future-mode policy: `spec/archive/v0.1/git-merge-conventions.md`
 
 ## 11) Milestones
 
@@ -136,8 +136,8 @@ Authoritative future-mode policy: `spec/git-merge-conventions-v0.md`
 2. `spec/backend/spec-for-anchor-model.md`
 3. `spec/backend/spec-for-reanchoring-engine.md`
 4. `spec/backend/spec-for-anchor-test-fixtures.md`
-5. `spec/backend/spec-for-backend-implementation-plan-tdd-v0.md`
-6. `spec/backend/spec-for-author-identity-v0.md`
+5. `spec/backend/spec-for-backend-implementation-plan-tdd.md`
+6. `spec/backend/spec-for-author-identity.md`
 7. `spec/backend/requirements-index.md`
 8. `spec/backend/coupling-map.md`
 9. `spec/backend/verification-checklist.md`
@@ -176,8 +176,8 @@ Authoritative future-mode policy: `spec/git-merge-conventions-v0.md`
 - `spec/backend/spec-for-anchor-model.md`
 - `spec/backend/spec-for-reanchoring-engine.md`
 - `spec/backend/spec-for-anchor-test-fixtures.md`
-- `spec/backend/spec-for-backend-implementation-plan-tdd-v0.md`
-- `spec/backend/spec-for-author-identity-v0.md`
+- `spec/backend/spec-for-backend-implementation-plan-tdd.md`
+- `spec/backend/spec-for-author-identity.md`
 - `spec/backend/requirements-index.md`
 - `spec/backend/coupling-map.md`
 - `spec/backend/verification-checklist.md`
@@ -185,10 +185,10 @@ Authoritative future-mode policy: `spec/git-merge-conventions-v0.md`
 - `guidance/backend/guidance-for-anchor-model.md`
 - `guidance/backend/guidance-for-reanchoring-engine.md`
 - `guidance/backend/guidance-for-anchor-test-fixtures.md`
-- `guidance/backend/guidance-for-backend-implementation-plan-tdd-v0.md`
-- `guidance/backend/guidance-for-author-identity-v0.md`
+- `guidance/backend/guidance-for-backend-implementation-plan-tdd.md`
+- `guidance/backend/guidance-for-author-identity.md`
 - `spec/spec-for-vscode-extension-mvp.md`
-- `spec/vscode-extension-plan-v0.md` (planning, non-normative)
-- `spec/git-merge-conventions-v0.md` (future-mode, non-core for MVP)
-- `research/host-platform-rubric-v0.md`
-- `research/host-platform-candidates-v0.md`
+- `spec/archive/v0.1/vscode-extension-plan.md` (planning, non-normative)
+- `spec/archive/v0.1/git-merge-conventions.md` (future-mode, non-core for MVP)
+- `research/host-platform-rubric.md`
+- `research/host-platform-candidates.md`

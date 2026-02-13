@@ -38,7 +38,7 @@ Start with a VS Code extension as the host frontend for md-collab.
 - Future mode: enable Git-tracked sidecars with merge conventions when cross-environment sync becomes necessary.
 
 ## Immediate next deliverables
-1. `spec/comments-sidecar-v0.md`
-2. `spec/anchor-reanchoring-v0.md`
-3. `spec/git-merge-conventions-v0.md`
-4. `spec/vscode-mvp-scope-v0.md`
+1. `spec/archive/v0.1/comments-sidecar.md`
+2. `spec/archive/v0.1/anchor-reanchoring.md`
+3. `spec/archive/v0.1/git-merge-conventions.md`
+4. `spec/vscode-mvp-scope.md` (historical reference; file not present in current tree)

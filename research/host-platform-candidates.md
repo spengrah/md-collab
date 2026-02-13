@@ -30,4 +30,4 @@ Scoring basis:
 - VS Code is currently the strongest default for A–F completeness + remote workflow + delivery speed.
 
 ## Related files
-- Rubric definition: `projects/md-collab/spec/host-platform-rubric-v0.md`
+- Rubric definition: `projects/md-collab/research/host-platform-rubric.md`

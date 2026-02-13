@@ -16,15 +16,15 @@ Local-first Markdown collaboration with inline comment threads, designed for Spe
 
 ## Repository layout
 - `PRD.md` — locked product requirements (v0.1)
-- `spec/comments-sidecar-v0.md` — superseded redirect
-- `spec/anchor-reanchoring-v0.md` — superseded redirect
-- `spec/vscode-extension-plan-v0.md` — implementation plan (non-normative)
+- `spec/archive/v0.1/comments-sidecar.md` — superseded redirect
+- `spec/archive/v0.1/anchor-reanchoring.md` — superseded redirect
+- `spec/archive/v0.1/vscode-extension-plan.md` — implementation plan (non-normative)
 - `spec/spec-for-vscode-extension-mvp.md` — frontend normative MVP spec
 - `spec/backend/spec-for-*.md` — backend normative specs (sidecar, anchors, re-anchoring, fixtures, TDD plan, identity)
 - `guidance/backend/guidance-for-*.md` — backend implementation guidance
-- `spec/git-merge-conventions-v0.md` — future-mode policy (not MVP core)
-- `research/host-platform-rubric-v0.md` — platform evaluation rubric
-- `research/host-platform-candidates-v0.md` — initial platform scoring
+- `spec/archive/v0.1/git-merge-conventions.md` — future-mode policy (not MVP core)
+- `research/host-platform-rubric.md` — platform evaluation rubric
+- `research/host-platform-candidates.md` — initial platform scoring
 
 ## Next implementation step
 Build the VS Code MVP against the existing specs, then tighten schema/fixtures from real usage.
