@@ -1,6 +1,6 @@
 # spec-for-vscode-extension-mvp
 
-Status: v0.1 draft
+Status: v0.1 baseline (active for MVP), superseded-in-scope for v0.2 by `spec/frontend/*` PR-review-style docs
 
 ## 1. Scope
 Normative MVP behavior for the VS Code extension frontend.

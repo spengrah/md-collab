@@ -1,6 +1,8 @@
 # spec-for-sidecar-sync-and-write-safety-v0
 
-Status: draft v0.1  
+Status: partially superseded (v0.1 baseline retained)  
+Extended by: `spec-for-git-review-thread-model-v0.md` and `spec-for-version-aware-outdatedness-v0.md`.
+
 Scope: external sidecar changes, refresh, and lost-update mitigation
 
 ## 1. Goal

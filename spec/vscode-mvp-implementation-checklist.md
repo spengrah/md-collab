@@ -1,6 +1,6 @@
 # VS Code MVP Implementation Checklist (v0.1)
 
-Status: ready to execute  
+Status: implemented baseline (v0.1); for forward UX work use `spec/frontend/*` v0.2 docs  
 Depends on: backend v0.1 (narrowed identity scope)
 
 ## P0 — Extension scaffold + wiring
