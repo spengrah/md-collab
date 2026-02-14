@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import {
   applySuggestion,
@@ -87,6 +87,115 @@ const cases = [
       const parsed = parseSidecar(JSON.stringify(legacy));
       if (parsed.threads.length !== 1) throw new Error('legacy sidecar parse failed');
       if (parsed.threads[0].thread_id !== 'legacy-thread') throw new Error('legacy thread id mismatch');
+    },
+  },
+  {
+    id: 'ACPT-DMODEL-003',
+    group: 'data-model-acceptance',
+    smoke: false,
+    run: () => {
+      const additiveV02Shape = {
+        schema_version: '0.1.0',
+        document: { path: 'v02.md' },
+        threads: [
+          {
+            thread_id: 'v02-thread',
+            status: 'open',
+            anchor: {
+              primary: {
+                start: { line: 1, column: 1, offset_utf16: 0 },
+                end: { line: 1, column: 5, offset_utf16: 4 },
+              },
+              fallback: {
+                quote: 'hello',
+                prefix: '',
+                suffix: ' world',
+                quote_hash: sha256('hello'),
+                context_hash: sha256('hello world'),
+              },
+              anchor_confidence: 'high',
+            },
+            author,
+            messages: [
+              {
+                message_id: 'v02-msg',
+                author,
+                body: 'v0.2 additive context',
+                created_at: FIXED_TS,
+                edited_at: null,
+                message_version_context: {
+                  kind: 'hybrid',
+                  seen_workspace_snapshot_id: 'ws-1',
+                  seen_head_commit: 'abc123',
+                },
+              },
+            ],
+            created_at: FIXED_TS,
+            updated_at: FIXED_TS,
+            thread_version_context: {
+              kind: 'hybrid',
+              workspace_snapshot_id: 'ws-1',
+              base_commit: 'abc000',
+              head_commit: 'abc123',
+              file_path_at_create: 'v02.md',
+            },
+            suggestions: [
+              {
+                suggestion_id: 's1',
+                thread_id: 'v02-thread',
+                status: 'proposed',
+                proposed_edit: {
+                  anchor: {
+                    primary: {
+                      start: { line: 1, column: 1, offset_utf16: 0 },
+                      end: { line: 1, column: 5, offset_utf16: 4 },
+                    },
+                    fallback: {
+                      quote: 'hello',
+                      prefix: '',
+                      suffix: ' world',
+                      quote_hash: sha256('hello'),
+                      context_hash: sha256('hello world'),
+                    },
+                    anchor_confidence: 'high',
+                  },
+                  before_text_hash: sha256('hello'),
+                  replacement_text: 'HELLO',
+                },
+                proposed_by: author,
+                proposed_at: FIXED_TS,
+              },
+            ],
+          },
+        ],
+      };
+
+      const parsed = parseSidecar(JSON.stringify(additiveV02Shape));
+      if (parsed.threads[0].thread_version_context?.kind !== 'hybrid') throw new Error('v0.2 thread context parse failed');
+      if (parsed.threads[0].messages[0].message_version_context?.kind !== 'hybrid') throw new Error('v0.2 message context parse failed');
+      if (parsed.threads[0].suggestions?.[0].status !== 'proposed') throw new Error('v0.2 suggestion shape parse failed');
+
+      let threw = false;
+      try {
+        parseSidecar(
+          JSON.stringify({
+            ...additiveV02Shape,
+            threads: [
+              {
+                ...additiveV02Shape.threads[0],
+                thread_version_context: {
+                  kind: 'hybrid',
+                  workspace_snapshot_id: 'ws-1',
+                  head_commit: 'abc123',
+                },
+              },
+            ],
+          }),
+        );
+      } catch (err) {
+        threw = String(err?.code ?? '').includes('SCHEMA_INVALID') || String(err?.message ?? '').includes('SCHEMA_INVALID');
+      }
+      if (!threw) throw new Error('expected SCHEMA_INVALID for invalid additive v0.2 class constraints');
     },
   },
   {
@@ -228,6 +337,7 @@ const cases = [
         messageId: 'm1',
         now: FIXED_TS,
       });
+
       const proposedApply = proposeSuggestion({
         sidecar: created,
         threadId: 't1',
@@ -238,6 +348,10 @@ const cases = [
         replacementText: 'HELLO',
         now: FIXED_TS,
       });
+      if (proposedApply.threads[0].suggestions?.find((s) => s.suggestion_id === 's-apply')?.status !== 'proposed') {
+        throw new Error('suggestion proposed state not recorded for apply flow');
+      }
+
       const applied = applySuggestion({
         sidecar: proposedApply,
         threadId: 't1',
@@ -260,6 +374,10 @@ const cases = [
         replacementText: 'Hello there',
         now: FIXED_TS,
       });
+      if (proposedReject.threads[0].suggestions?.find((s) => s.suggestion_id === 's-reject')?.status !== 'proposed') {
+        throw new Error('suggestion proposed state not recorded for reject flow');
+      }
+
       const rejected = rejectSuggestion({
         sidecar: proposedReject,
         threadId: 't1',
@@ -332,6 +450,21 @@ const getSha = () => {
 
 const ensureDir = async (p) => mkdir(dirname(p), { recursive: true });
 
+const validateSuitePartition = () => {
+  const allIds = cases.map((c) => c.id);
+  const smokeIds = cases.filter((c) => c.smoke).map((c) => c.id);
+  if (smokeIds.length === 0) throw new Error('smoke suite must not be empty');
+  if (smokeIds.length >= allIds.length) throw new Error('smoke suite must be a strict subset of full suite');
+  for (const id of smokeIds) {
+    if (!allIds.includes(id)) throw new Error(`smoke case not in full suite: ${id}`);
+  }
+  return {
+    fullCaseCount: allIds.length,
+    smokeCaseCount: smokeIds.length,
+    smokeCaseIds: smokeIds,
+  };
+};
+
 const buildSummary = (result) => {
   const lines = [];
   lines.push('# Acceptance Report');
@@ -341,6 +474,7 @@ const buildSummary = (result) => {
   lines.push(`- git_sha: ${result.gitSha}`);
   lines.push(`- verdict: ${result.verdict}`);
   lines.push(`- total: ${result.cases.length}, passed: ${result.cases.filter((c) => c.status === 'PASS').length}, failed: ${result.cases.filter((c) => c.status === 'FAIL').length}`);
+  lines.push(`- suite_partition: smoke ${result.suitePartition.smokeCaseCount}/${result.suitePartition.fullCaseCount} (strict subset: ${result.suitePartition.smokeCaseCount < result.suitePartition.fullCaseCount})`);
   lines.push('');
   lines.push('## Groups');
   for (const g of result.groups) {
@@ -360,6 +494,7 @@ const buildSummary = (result) => {
 };
 
 const runSuite = async (suite) => {
+  const suitePartition = validateSuitePartition();
   const selected = suite === 'smoke' ? cases.filter((c) => c.smoke) : cases;
   const caseResults = [];
   for (const c of selected) {
@@ -382,6 +517,7 @@ const runSuite = async (suite) => {
     timestamp: new Date().toISOString(),
     gitSha: getSha(),
     verdict,
+    suitePartition,
     groups,
     cases: caseResults,
     waivers: [],

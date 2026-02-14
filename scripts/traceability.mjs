@@ -108,6 +108,9 @@ const build = async () => {
 
   const allMappedFiles = [...new Set(mappings.flatMap((m) => m.tests).filter((t) => existsSync(t)))].sort();
   const execution = await executeMappedTests(allMappedFiles);
+  if (!execution.success) {
+    errors.push('mapped test execution failed');
+  }
 
   const entries = requirements.map((req) => {
     const mapped = mappingByReq.get(req.requirementId);
@@ -123,6 +126,7 @@ const build = async () => {
         .filter((s) => s === 'pass' || s === 'fail' || s === 'not-run');
       if (statuses.includes('fail')) lastExecutionStatus = 'fail';
       else if (statuses.length > 0 && statuses.every((s) => s === 'pass')) lastExecutionStatus = 'pass';
+      else if (!execution.success) lastExecutionStatus = 'fail';
       else lastExecutionStatus = 'not-run';
     }
 
