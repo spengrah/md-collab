@@ -96,3 +96,8 @@ At completion, produce:
 
 ## 10) Recommended default if ambiguous
 If results are mixed/ambiguous, choose **Stop** and continue VS Code path. Re-open Lapce only if strategic priorities change or additional contributors can own fork maintenance.
+
+---
+
+## Execution updates
+- 2026-02-14 initial execution pass report: `research/lapce-fork-spike/spike-report-initial-pass-2026-02-14.md`

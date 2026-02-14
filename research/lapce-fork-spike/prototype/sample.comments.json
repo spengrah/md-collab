@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "threads": [
+    {
+      "id": "t-1",
+      "file": "docs/notes.md",
+      "startLine": 12,
+      "startChar": 4,
+      "endLine": 12,
+      "endChar": 18,
+      "status": "open",
+      "summary": "Clarify this sentence",
+      "messages": [
+        {"id": "m-1", "author": "spencer", "text": "Could we tighten wording?"}
+      ]
+    },
+    {
+      "id": "t-2",
+      "file": "docs/notes.md",
+      "startLine": 27,
+      "startChar": 0,
+      "endLine": 27,
+      "endChar": 40,
+      "status": "open",
+      "summary": "Link reference seems stale",
+      "messages": [
+        {"id": "m-2", "author": "lyle", "text": "Need updated source"}
+      ]
+    }
+  ]
+}
