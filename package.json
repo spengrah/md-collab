@@ -18,7 +18,10 @@
   "scripts": {
     "build": "node ./scripts/build-dist.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "accept": "npm run build && node ./scripts/acceptance-runner.mjs full",
+    "accept:smoke": "npm run build && node ./scripts/acceptance-runner.mjs smoke",
+    "accept:report": "node ./scripts/acceptance-runner.mjs report"
   },
   "devDependencies": {
     "ajv": "^8.17.1",
