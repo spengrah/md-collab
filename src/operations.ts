@@ -1,19 +1,28 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { buildAnchor } from './anchor.js';
 import { error } from './errors.js';
 import type {
   Author,
   CreateThreadInput,
   EditMessageInput,
+  Message,
+  ProposeSuggestionInput,
   ReanchorOutput,
+  RelevanceContext,
+  RelevanceReasonCode,
+  RelevanceState,
   ReplyInput,
   Sidecar,
+  SuggestionMutationInput,
   Thread,
+  ThreadVersionContext,
   ToggleThreadInput,
 } from './types.js';
 
 const clone = <T>(value: T): T => structuredClone(value);
 const nowUtc = () => new Date().toISOString();
+
+const hashText = (value: string) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
 
 const isValidAuthor = (author: Author | undefined): author is Author =>
   !!author &&
@@ -29,27 +38,35 @@ const assertAuthor = (author: Author | undefined): asserts author is Author => {
   }
 };
 
-const collectIds = (sidecar: Sidecar): { threadIds: Set<string>; messageIds: Set<string> } => {
+const collectIds = (sidecar: Sidecar): { threadIds: Set<string>; messageIds: Set<string>; suggestionIds: Set<string> } => {
   const threadIds = new Set<string>();
   const messageIds = new Set<string>();
+  const suggestionIds = new Set<string>();
 
   for (const thread of sidecar.threads) {
     threadIds.add(thread.thread_id);
     for (const message of thread.messages) {
       messageIds.add(message.message_id);
     }
+    for (const suggestion of thread.suggestions ?? []) {
+      suggestionIds.add(suggestion.suggestion_id);
+    }
   }
 
-  return { threadIds, messageIds };
+  return { threadIds, messageIds, suggestionIds };
 };
 
-const assertUniqueId = (id: string, existing: Set<string>, kind: 'thread_id' | 'message_id') => {
+const assertUniqueId = (id: string, existing: Set<string>, kind: 'thread_id' | 'message_id' | 'suggestion_id') => {
   if (existing.has(id)) {
     error('ID_CONFLICT', `${kind} already exists: ${id}`);
   }
 };
 
-const resolveUniqueId = (requestedId: string | undefined, existing: Set<string>, kind: 'thread_id' | 'message_id'): string => {
+const resolveUniqueId = (
+  requestedId: string | undefined,
+  existing: Set<string>,
+  kind: 'thread_id' | 'message_id' | 'suggestion_id',
+): string => {
   if (requestedId) {
     assertUniqueId(requestedId, existing, kind);
     return requestedId;
@@ -68,6 +85,47 @@ const findThread = (threads: Thread[], threadId: string): Thread => {
   return thread;
 };
 
+const ensureTimelineKind = (kind: CreateThreadInput['timelineKind'] | ReplyInput['timelineKind']) => kind ?? 'workspace';
+
+const makeThreadVersionContext = (input: CreateThreadInput, anchorAtCreate: Thread['anchor']): ThreadVersionContext => ({
+  kind: ensureTimelineKind(input.timelineKind),
+  workspace_snapshot_id: input.workspaceSnapshotId,
+  workspace_file_hash: input.workspaceFileHash,
+  workspace_file_mtime: input.workspaceFileMtime,
+  workspace_actor_session_id: input.workspaceActorSessionId,
+  base_commit: input.baseCommit,
+  head_commit: input.headCommit,
+  file_path_at_create: input.filePathAtCreate,
+  base_blob_sha: input.baseBlobSha,
+  head_blob_sha: input.headBlobSha,
+  anchor_at_create: anchorAtCreate,
+});
+
+const makeMessageVersionContext = (input: ReplyInput | CreateThreadInput) => ({
+  kind: ensureTimelineKind(input.timelineKind),
+  seen_workspace_snapshot_id: input.workspaceSnapshotId,
+  seen_head_commit: 'seenHeadCommit' in input ? input.seenHeadCommit : input.headCommit,
+  seen_blob_sha: 'seenBlobSha' in input ? input.seenBlobSha : input.headBlobSha,
+});
+
+const appendAuditMessage = (thread: Thread, body: string, author: Author, ts: string) => {
+  thread.messages.push({
+    message_id: randomUUID(),
+    author,
+    body,
+    created_at: ts,
+    edited_at: null,
+    message_version_context: thread.thread_version_context
+      ? {
+          kind: thread.thread_version_context.kind,
+          seen_workspace_snapshot_id: thread.thread_version_context.workspace_snapshot_id,
+          seen_head_commit: thread.thread_version_context.head_commit,
+          seen_blob_sha: thread.thread_version_context.head_blob_sha,
+        }
+      : undefined,
+  });
+};
+
 export const createThread = (input: CreateThreadInput): Sidecar => {
   assertAuthor(input.author);
 
@@ -76,11 +134,12 @@ export const createThread = (input: CreateThreadInput): Sidecar => {
   const { threadIds, messageIds } = collectIds(next);
   const thread_id = resolveUniqueId(input.threadId, threadIds, 'thread_id');
   const message_id = resolveUniqueId(input.messageId, messageIds, 'message_id');
+  const anchor = buildAnchor(input.text, input.startOffsetUtf16, input.endOffsetUtf16);
 
   const thread: Thread = {
     thread_id,
     status: 'open',
-    anchor: buildAnchor(input.text, input.startOffsetUtf16, input.endOffsetUtf16),
+    anchor,
     author: input.author,
     messages: [
       {
@@ -89,10 +148,14 @@ export const createThread = (input: CreateThreadInput): Sidecar => {
         body: input.body,
         created_at: ts,
         edited_at: null,
+        message_version_context: makeMessageVersionContext(input),
       },
     ],
     created_at: ts,
     updated_at: ts,
+    thread_version_context: makeThreadVersionContext(input, anchor),
+    relevance_state: 'active',
+    relevance_checked_at: ts,
   };
 
   next.threads.push(thread);
@@ -114,6 +177,7 @@ export const reply = (input: ReplyInput): Sidecar => {
     body: input.body,
     created_at: ts,
     edited_at: null,
+    message_version_context: makeMessageVersionContext(input),
   });
   thread.updated_at = ts;
   return next;
@@ -169,3 +233,118 @@ export const applyReanchor = (
   thread.updated_at = now;
   return next;
 };
+
+const setRelevance = (thread: Thread, state: RelevanceState, reason: RelevanceReasonCode | undefined, checkedAt: string, against?: string) => {
+  thread.relevance_state = state;
+  thread.relevance_reason = reason;
+  thread.relevance_checked_at = checkedAt;
+  thread.relevance_checked_against_commit = against;
+};
+
+export const evaluateThreadRelevance = (thread: Thread, context: RelevanceContext, checkedAt = nowUtc()): Thread => {
+  const next = clone(thread);
+  const timelineKind = context.timelineKind ?? next.thread_version_context?.kind ?? 'workspace';
+
+  if (!next.anchor.primary.start || !next.anchor.primary.end || next.anchor.anchor_confidence === 'broken') {
+    setRelevance(next, 'orphaned', 'ANCHOR_NOT_FOUND', checkedAt, context.headCommit);
+    return next;
+  }
+
+  if ((timelineKind === 'workspace' || timelineKind === 'hybrid') && !context.workspaceSnapshotId) {
+    setRelevance(next, 'outdated', 'WORKSPACE_CONTEXT_UNAVAILABLE', checkedAt, context.headCommit);
+    return next;
+  }
+
+  if ((timelineKind === 'git' || timelineKind === 'hybrid') && context.gitAvailable === false) {
+    setRelevance(next, 'outdated', 'COMMIT_CONTEXT_UNAVAILABLE', checkedAt, context.headCommit);
+    return next;
+  }
+
+  if (next.thread_version_context?.file_path_at_create && context.currentPath && next.thread_version_context.file_path_at_create !== context.currentPath) {
+    setRelevance(next, 'outdated', 'FILE_RENAMED', checkedAt, context.headCommit);
+    return next;
+  }
+
+  if (next.thread_version_context?.workspace_file_hash && context.workspaceFileHash && next.thread_version_context.workspace_file_hash !== context.workspaceFileHash) {
+    setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+    return next;
+  }
+
+  if (next.thread_version_context?.head_blob_sha && context.headBlobSha && next.thread_version_context.head_blob_sha !== context.headBlobSha) {
+    setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+    return next;
+  }
+
+  setRelevance(next, 'active', undefined, checkedAt, context.headCommit);
+  return next;
+};
+
+export const evaluateSidecarRelevance = (sidecar: Sidecar, context: RelevanceContext, checkedAt = nowUtc()): Sidecar => {
+  const next = clone(sidecar);
+  next.threads = next.threads.map((thread) => evaluateThreadRelevance(thread, context, checkedAt));
+  return next;
+};
+
+export const proposeSuggestion = (input: ProposeSuggestionInput): Sidecar => {
+  assertAuthor(input.author);
+  const next = clone(input.sidecar);
+  const thread = findThread(next.threads, input.threadId);
+  const ts = input.now ?? nowUtc();
+  const { suggestionIds } = collectIds(next);
+  const suggestion_id = resolveUniqueId(input.suggestionId, suggestionIds, 'suggestion_id');
+  thread.suggestions = thread.suggestions ?? [];
+  thread.suggestions.push({
+    suggestion_id,
+    thread_id: thread.thread_id,
+    status: 'proposed',
+    proposed_edit: {
+      anchor: input.anchor,
+      before_text_hash: input.beforeTextHash,
+      replacement_text: input.replacementText,
+    },
+    proposed_by: input.author,
+    proposed_at: ts,
+  });
+  thread.updated_at = ts;
+  return next;
+};
+
+const updateSuggestionDecision = (
+  input: SuggestionMutationInput,
+  nextStatus: 'applied' | 'rejected' | 'obsolete',
+  beforeText?: string,
+): Sidecar => {
+  assertAuthor(input.actor);
+  const next = clone(input.sidecar);
+  const thread = findThread(next.threads, input.threadId);
+  const suggestion = (thread.suggestions ?? []).find((s) => s.suggestion_id === input.suggestionId);
+  if (!suggestion) error('SUGGESTION_NOT_FOUND', `suggestion not found: ${input.suggestionId}`);
+  const ts = input.now ?? nowUtc();
+
+  if (beforeText && hashText(beforeText) !== suggestion.proposed_edit.before_text_hash) {
+    suggestion.status = 'obsolete';
+    suggestion.decision = {
+      decided_by: input.actor,
+      decided_at: ts,
+      decision_reason: 'Hash mismatch: marked obsolete',
+    };
+    appendAuditMessage(thread, `Suggestion ${suggestion.suggestion_id} became obsolete due to hash mismatch.`, input.actor, ts);
+    thread.updated_at = ts;
+    return next;
+  }
+
+  suggestion.status = nextStatus;
+  suggestion.decision = {
+    decided_by: input.actor,
+    decided_at: ts,
+    decision_reason: input.decisionReason,
+  };
+  appendAuditMessage(thread, `Suggestion ${suggestion.suggestion_id} ${nextStatus}.`, input.actor, ts);
+  thread.updated_at = ts;
+  return next;
+};
+
+export const applySuggestion = (input: SuggestionMutationInput & { beforeText?: string }): Sidecar =>
+  updateSuggestionDecision(input, 'applied', input.beforeText);
+
+export const rejectSuggestion = (input: SuggestionMutationInput): Sidecar => updateSuggestionDecision(input, 'rejected');

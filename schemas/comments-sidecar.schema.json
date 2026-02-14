@@ -117,7 +117,43 @@
             "null"
           ],
           "format": "date-time"
+        },
+        "message_version_context": {
+          "$ref": "#/$defs/messageVersionContext"
         }
+      }
+    },
+    "timelineKind": {
+      "type": "string",
+      "enum": ["workspace", "git", "hybrid"]
+    },
+    "messageVersionContext": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/timelineKind" },
+        "seen_workspace_snapshot_id": { "type": "string" },
+        "seen_head_commit": { "type": "string" },
+        "seen_blob_sha": { "type": "string" }
+      }
+    },
+    "threadVersionContext": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/timelineKind" },
+        "workspace_snapshot_id": { "type": "string" },
+        "workspace_file_hash": { "type": "string" },
+        "workspace_file_mtime": { "$ref": "#/$defs/timestamp" },
+        "workspace_actor_session_id": { "type": "string" },
+        "base_commit": { "type": "string" },
+        "head_commit": { "type": "string" },
+        "file_path_at_create": { "type": "string" },
+        "base_blob_sha": { "type": "string" },
+        "head_blob_sha": { "type": "string" },
+        "anchor_at_create": { "type": "object", "additionalProperties": true }
       }
     },
     "thread": {
@@ -229,6 +265,66 @@
         },
         "updated_at": {
           "$ref": "#/$defs/timestamp"
+        },
+        "thread_version_context": {
+          "$ref": "#/$defs/threadVersionContext"
+        },
+        "relevance_state": {
+          "type": "string",
+          "enum": ["active", "outdated", "orphaned"]
+        },
+        "relevance_reason": {
+          "type": "string",
+          "enum": [
+            "CONTENT_CHANGED",
+            "ANCHOR_RELOCATED",
+            "ANCHOR_NOT_FOUND",
+            "FILE_RENAMED",
+            "FILE_DELETED",
+            "COMMIT_CONTEXT_UNAVAILABLE",
+            "WORKSPACE_CONTEXT_UNAVAILABLE"
+          ]
+        },
+        "relevance_checked_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "relevance_checked_against_commit": {
+          "type": "string"
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["suggestion_id", "thread_id", "status", "proposed_edit", "proposed_by", "proposed_at"],
+            "properties": {
+              "suggestion_id": { "type": "string", "minLength": 1 },
+              "thread_id": { "type": "string", "minLength": 1 },
+              "status": { "type": "string", "enum": ["proposed", "applied", "rejected", "obsolete"] },
+              "proposed_edit": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": ["anchor", "before_text_hash", "replacement_text"],
+                "properties": {
+                  "anchor": { "type": "object", "additionalProperties": true },
+                  "before_text_hash": { "type": "string", "pattern": "^sha256:.+" },
+                  "replacement_text": { "type": "string" }
+                }
+              },
+              "proposed_by": { "$ref": "#/$defs/author" },
+              "proposed_at": { "$ref": "#/$defs/timestamp" },
+              "decision": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": ["decided_by", "decided_at"],
+                "properties": {
+                  "decided_by": { "$ref": "#/$defs/author" },
+                  "decided_at": { "$ref": "#/$defs/timestamp" },
+                  "decision_reason": { "type": "string" }
+                }
+              }
+            }
+          }
         }
       }
     }
