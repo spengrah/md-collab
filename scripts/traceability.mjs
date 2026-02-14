@@ -1,13 +1,14 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { execSync } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
+import { execSync, spawnSync } from 'node:child_process';
 
 const REQ_FILES = ['spec/backend/requirements-index.md', 'spec/frontend/requirements-index.md'];
 const MAP_FILE = 'spec/quality/traceability-map.json';
 const ARTIFACT_JSON = 'artifacts/traceability/latest.json';
 const ARTIFACT_SUMMARY = 'artifacts/traceability/latest-summary.md';
+const EXECUTION_ARTIFACT_JSON = 'artifacts/traceability/latest-test-execution.json';
 
 const getSha = () => {
   try {
@@ -46,6 +47,45 @@ const loadMap = async () => {
     .sort((a, b) => a.requirementId.localeCompare(b.requirementId));
 };
 
+const executeMappedTests = async (testFiles) => {
+  const sortedTests = [...new Set(testFiles)].sort();
+  if (sortedTests.length === 0) {
+    return {
+      command: null,
+      success: true,
+      executedAt: new Date().toISOString(),
+      suiteByFile: {},
+      filesRequested: [],
+    };
+  }
+
+  await mkdir(dirname(EXECUTION_ARTIFACT_JSON), { recursive: true });
+  const command = ['vitest', 'run', ...sortedTests, '--reporter=json', `--outputFile=${EXECUTION_ARTIFACT_JSON}`];
+  const proc = spawnSync('npx', command, { encoding: 'utf8' });
+
+  let suiteByFile = {};
+  if (existsSync(EXECUTION_ARTIFACT_JSON)) {
+    const executionRaw = await readFile(EXECUTION_ARTIFACT_JSON, 'utf8');
+    const execution = JSON.parse(executionRaw);
+    const rows = Array.isArray(execution?.testResults) ? execution.testResults : [];
+    suiteByFile = Object.fromEntries(
+      rows.map((row) => {
+        const file = String(row?.name ?? '');
+        const status = String(row?.status ?? 'failed') === 'passed' ? 'pass' : 'fail';
+        return [resolve(file), status];
+      }),
+    );
+  }
+
+  return {
+    command: `npx ${command.join(' ')}`,
+    success: proc.status === 0,
+    executedAt: new Date().toISOString(),
+    filesRequested: sortedTests,
+    suiteByFile,
+  };
+};
+
 const build = async () => {
   const requirements = await loadRequirements();
   const mappings = await loadMap();
@@ -66,15 +106,31 @@ const build = async () => {
     mappingByReq.set(mapping.requirementId, mapping);
   }
 
+  const allMappedFiles = [...new Set(mappings.flatMap((m) => m.tests).filter((t) => existsSync(t)))].sort();
+  const execution = await executeMappedTests(allMappedFiles);
+
   const entries = requirements.map((req) => {
     const mapped = mappingByReq.get(req.requirementId);
     const tests = mapped?.tests ?? [];
     const missingFiles = tests.filter((t) => !existsSync(t));
-    const lastExecutionStatus = missingFiles.length > 0 ? 'invalid-mapping' : tests.length > 0 ? 'not-run' : 'not-run';
+
+    let lastExecutionStatus = 'not-run';
+    if (missingFiles.length > 0) {
+      lastExecutionStatus = 'invalid-mapping';
+    } else if (tests.length > 0) {
+      const statuses = tests
+        .map((t) => execution.suiteByFile[resolve(t)] ?? 'not-run')
+        .filter((s) => s === 'pass' || s === 'fail' || s === 'not-run');
+      if (statuses.includes('fail')) lastExecutionStatus = 'fail';
+      else if (statuses.length > 0 && statuses.every((s) => s === 'pass')) lastExecutionStatus = 'pass';
+      else lastExecutionStatus = 'not-run';
+    }
+
     let coverageStatus = 'covered';
     if (tests.length === 0) coverageStatus = 'missing';
     else if (mapped?.waiver) coverageStatus = 'partial';
     if (missingFiles.length > 0) coverageStatus = 'missing';
+
     return {
       requirementId: req.requirementId,
       sourceFile: req.sourceFile,
@@ -98,6 +154,7 @@ const build = async () => {
     requirementSources: REQ_FILES,
     mapFile: MAP_FILE,
     errors,
+    execution,
     counts,
     requirements: entries,
     verdict: errors.length > 0 || counts.missing > 0 ? 'FAIL' : 'PASS',
@@ -106,6 +163,10 @@ const build = async () => {
   await mkdir(dirname(ARTIFACT_JSON), { recursive: true });
   await writeFile(ARTIFACT_JSON, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
   await writeFile(ARTIFACT_SUMMARY, toSummary(result), 'utf8');
+
+  if (existsSync(EXECUTION_ARTIFACT_JSON)) {
+    await rm(EXECUTION_ARTIFACT_JSON, { force: true });
+  }
 
   return result;
 };
@@ -120,6 +181,8 @@ const toSummary = (result) => {
   lines.push(`- covered: ${result.counts.covered}`);
   lines.push(`- partial: ${result.counts.partial}`);
   lines.push(`- missing: ${result.counts.missing}`);
+  lines.push(`- test execution command: ${result.execution.command ?? 'none'}`);
+  lines.push(`- test execution success: ${result.execution.success}`);
   lines.push('');
 
   lines.push('## Errors');

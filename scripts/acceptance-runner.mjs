@@ -9,6 +9,7 @@ import {
   evaluateSidecarRelevance,
   parseSidecar,
   proposeSuggestion,
+  rejectSuggestion,
 } from '../dist/index.js';
 
 const ARTIFACT_JSON = 'artifacts/acceptance/latest.json';
@@ -20,6 +21,74 @@ const sha256 = (v) => `sha256:${createHash('sha256').update(v).digest('hex')}`;
 const baseSidecar = () => parseSidecar('{"schema_version":"0.1.0","document":{"path":"doc.md"},"threads":[]}');
 
 const cases = [
+  {
+    id: 'ACPT-DMODEL-001',
+    group: 'data-model-acceptance',
+    smoke: false,
+    run: () => {
+      const valid = {
+        schema_version: '0.1.0',
+        document: { path: 'doc.md' },
+        threads: [],
+      };
+      const parsed = parseSidecar(JSON.stringify(valid));
+      if (parsed.schema_version !== '0.1.0') throw new Error('schema_version mismatch for valid sidecar');
+
+      let threw = false;
+      try {
+        parseSidecar('{"schema_version":"0.1.0","document":{"path":"doc.md"}}');
+      } catch (err) {
+        threw = String(err?.code ?? '').includes('SCHEMA_INVALID') || String(err?.message ?? '').includes('SCHEMA_INVALID');
+      }
+      if (!threw) throw new Error('expected SCHEMA_INVALID for malformed sidecar shape');
+    },
+  },
+  {
+    id: 'ACPT-DMODEL-002',
+    group: 'data-model-acceptance',
+    smoke: false,
+    run: () => {
+      const legacy = {
+        schema_version: '0.1.0',
+        document: { path: 'legacy.md' },
+        threads: [
+          {
+            thread_id: 'legacy-thread',
+            status: 'open',
+            anchor: {
+              primary: {
+                start: { line: 1, column: 1, offset_utf16: 0 },
+                end: { line: 1, column: 5, offset_utf16: 4 },
+              },
+              fallback: {
+                quote: 'hello',
+                prefix: '',
+                suffix: ' world',
+                quote_hash: sha256('hello'),
+                context_hash: sha256('hello world'),
+              },
+              anchor_confidence: 'high',
+            },
+            author,
+            messages: [
+              {
+                message_id: 'legacy-msg',
+                author,
+                body: 'legacy body',
+                created_at: FIXED_TS,
+                edited_at: null,
+              },
+            ],
+            created_at: FIXED_TS,
+            updated_at: FIXED_TS,
+          },
+        ],
+      };
+      const parsed = parseSidecar(JSON.stringify(legacy));
+      if (parsed.threads.length !== 1) throw new Error('legacy sidecar parse failed');
+      if (parsed.threads[0].thread_id !== 'legacy-thread') throw new Error('legacy thread id mismatch');
+    },
+  },
   {
     id: 'ACPT-TIME-001',
     group: 'timeline-modes',
@@ -141,6 +210,68 @@ const cases = [
       });
       if (next.threads[0].suggestions?.[0].status !== 'obsolete') throw new Error('suggestion not marked obsolete');
       if (!next.threads[0].messages.at(-1)?.body.includes('obsolete')) throw new Error('no audit message for obsolete');
+    },
+  },
+  {
+    id: 'ACPT-SUG-002',
+    group: 'suggestion-lifecycle',
+    smoke: false,
+    run: () => {
+      const created = createThread({
+        sidecar: baseSidecar(),
+        text: 'hello world',
+        startOffsetUtf16: 0,
+        endOffsetUtf16: 4,
+        body: 'note',
+        author,
+        threadId: 't1',
+        messageId: 'm1',
+        now: FIXED_TS,
+      });
+      const proposedApply = proposeSuggestion({
+        sidecar: created,
+        threadId: 't1',
+        suggestionId: 's-apply',
+        author,
+        anchor: created.threads[0].anchor,
+        beforeTextHash: sha256('hello'),
+        replacementText: 'HELLO',
+        now: FIXED_TS,
+      });
+      const applied = applySuggestion({
+        sidecar: proposedApply,
+        threadId: 't1',
+        suggestionId: 's-apply',
+        actor: author,
+        beforeText: 'hello',
+        now: FIXED_TS,
+      });
+      if (applied.threads[0].suggestions?.find((s) => s.suggestion_id === 's-apply')?.status !== 'applied') {
+        throw new Error('suggestion apply state not recorded');
+      }
+
+      const proposedReject = proposeSuggestion({
+        sidecar: applied,
+        threadId: 't1',
+        suggestionId: 's-reject',
+        author,
+        anchor: applied.threads[0].anchor,
+        beforeTextHash: sha256('hello'),
+        replacementText: 'Hello there',
+        now: FIXED_TS,
+      });
+      const rejected = rejectSuggestion({
+        sidecar: proposedReject,
+        threadId: 't1',
+        suggestionId: 's-reject',
+        actor: author,
+        decisionReason: 'not desired',
+        now: FIXED_TS,
+      });
+      if (rejected.threads[0].suggestions?.find((s) => s.suggestion_id === 's-reject')?.status !== 'rejected') {
+        throw new Error('suggestion reject state not recorded');
+      }
+      if (!rejected.threads[0].messages.at(-1)?.body.includes('rejected')) throw new Error('no audit message for rejected');
     },
   },
   {
