@@ -21,7 +21,10 @@
     "test:watch": "vitest",
     "accept": "npm run build && node ./scripts/acceptance-runner.mjs full",
     "accept:smoke": "npm run build && node ./scripts/acceptance-runner.mjs smoke",
-    "accept:report": "node ./scripts/acceptance-runner.mjs report"
+    "accept:report": "node ./scripts/acceptance-runner.mjs report",
+    "traceability:build": "node ./scripts/traceability.mjs build",
+    "traceability:check": "node ./scripts/traceability.mjs check",
+    "traceability:report": "node ./scripts/traceability.mjs report"
   },
   "devDependencies": {
     "ajv": "^8.17.1",

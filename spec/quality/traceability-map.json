@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "generatedBy": "manual",
+  "mappings": [
+    {
+      "requirementId": "MDC-BE-001",
+      "tests": ["tests/backend/sidecar-file.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-002",
+      "tests": ["tests/backend/schema-runtime.test.ts", "tests/schema/validate-sidecar.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-003",
+      "tests": ["tests/backend/operations.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-004",
+      "tests": ["tests/backend/sidecar-file.test.ts", "tests/backend/review-v2.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-005",
+      "tests": ["tests/backend/sidecar-file.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-006",
+      "tests": ["tests/backend/operations.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-007",
+      "tests": ["tests/backend/anchor-utils.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-008",
+      "tests": ["tests/backend/reanchor-fixtures.test.ts", "tests/backend/reanchor-safety.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-009",
+      "tests": ["tests/backend/reanchor-fixtures.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-010",
+      "tests": ["tests/backend/reanchor-safety.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-011",
+      "tests": ["tests/backend/reanchor-fixtures.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-012",
+      "tests": ["tests/backend/review-v2.test.ts", "tests/backend/operations.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-013",
+      "tests": ["tests/backend/sidecar-file.test.ts"],
+      "waiver": "Documentation-focused requirement; test mapping is indirect until dedicated assertion is added."
+    },
+    {
+      "requirementId": "MDC-BE-014",
+      "tests": ["tests/backend/operations.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-015",
+      "tests": ["tests/backend/review-v2.test.ts"]
+    },
+    {
+      "requirementId": "MDC-FE-001",
+      "tests": ["tests/vscode-extension/model.test.ts"]
+    },
+    {
+      "requirementId": "MDC-FE-002",
+      "tests": ["tests/vscode-extension/model.test.ts"],
+      "waiver": "Accessibility-specific checks are currently covered indirectly by model-level tests only."
+    },
+    {
+      "requirementId": "MDC-FE-003",
+      "tests": ["tests/vscode-extension/model.test.ts", "tests/backend/review-v2.test.ts"]
+    },
+    {
+      "requirementId": "MDC-FE-004",
+      "tests": ["tests/vscode-extension/model.test.ts", "tests/backend/review-v2.test.ts"]
+    },
+    {
+      "requirementId": "MDC-FE-005",
+      "tests": ["tests/vscode-extension/model.test.ts"],
+      "waiver": "Remote-SSH acceptance approximation is covered by smoke harness; no dedicated FE remote fixture yet."
+    },
+    {
+      "requirementId": "MDC-FE-006",
+      "tests": ["tests/vscode-extension/model.test.ts"],
+      "waiver": "Command-path audit coverage is partial pending dedicated composition-map regression tests."
+    },
+    {
+      "requirementId": "MDC-FE-007",
+      "tests": ["tests/vscode-extension/model.test.ts"],
+      "waiver": "Benchmark maintenance checks are process/documentation-driven with indirect test coverage only."
+    }
+  ]
+}
