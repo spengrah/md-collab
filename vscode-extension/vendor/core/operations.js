@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { reanchor } from './reanchor.js';
 import { buildAnchor } from './anchor.js';
 import { error } from './errors.js';
 const clone = (value) => structuredClone(value);
@@ -53,9 +54,11 @@ const findThread = (threads, threadId) => {
     return thread;
 };
 const ensureTimelineKind = (kind) => kind ?? 'workspace';
-const makeThreadVersionContext = (input, anchorAtCreate) => ({
+const makeThreadVersionContext = (input, anchorAtCreate, fallbackWorkspaceSnapshotId) => ({
     kind: ensureTimelineKind(input.timelineKind),
-    workspace_snapshot_id: input.workspaceSnapshotId,
+    workspace_snapshot_id: ensureTimelineKind(input.timelineKind) === 'workspace' || ensureTimelineKind(input.timelineKind) === 'hybrid'
+        ? input.workspaceSnapshotId ?? fallbackWorkspaceSnapshotId
+        : input.workspaceSnapshotId,
     workspace_file_hash: input.workspaceFileHash,
     workspace_file_mtime: input.workspaceFileMtime,
     workspace_actor_session_id: input.workspaceActorSessionId,
@@ -66,9 +69,11 @@ const makeThreadVersionContext = (input, anchorAtCreate) => ({
     head_blob_sha: input.headBlobSha,
     anchor_at_create: anchorAtCreate,
 });
-const makeMessageVersionContext = (input) => ({
+const makeMessageVersionContext = (input, fallbackWorkspaceSnapshotId) => ({
     kind: ensureTimelineKind(input.timelineKind),
-    seen_workspace_snapshot_id: input.workspaceSnapshotId,
+    seen_workspace_snapshot_id: ensureTimelineKind(input.timelineKind) === 'workspace' || ensureTimelineKind(input.timelineKind) === 'hybrid'
+        ? input.workspaceSnapshotId ?? fallbackWorkspaceSnapshotId
+        : input.workspaceSnapshotId,
     seen_head_commit: 'seenHeadCommit' in input ? input.seenHeadCommit : input.headCommit,
     seen_blob_sha: 'seenBlobSha' in input ? input.seenBlobSha : input.headBlobSha,
 });
@@ -109,12 +114,12 @@ export const createThread = (input) => {
                 body: input.body,
                 created_at: ts,
                 edited_at: null,
-                message_version_context: makeMessageVersionContext(input),
+                message_version_context: makeMessageVersionContext(input, ts),
             },
         ],
         created_at: ts,
         updated_at: ts,
-        thread_version_context: makeThreadVersionContext(input, anchor),
+        thread_version_context: makeThreadVersionContext(input, anchor, ts),
         relevance_state: 'active',
         relevance_checked_at: ts,
     };
@@ -134,7 +139,7 @@ export const reply = (input) => {
         body: input.body,
         created_at: ts,
         edited_at: null,
-        message_version_context: makeMessageVersionContext(input),
+        message_version_context: makeMessageVersionContext(input, ts),
     });
     thread.updated_at = ts;
     return next;
@@ -185,31 +190,100 @@ const setRelevance = (thread, state, reason, checkedAt, against) => {
     thread.relevance_checked_at = checkedAt;
     thread.relevance_checked_against_commit = against;
 };
+const hasDirectAnchorMatch = (thread, documentText) => {
+    if (!documentText || !thread.anchor.primary.start || !thread.anchor.primary.end)
+        return false;
+    const start = thread.anchor.primary.start.offset_utf16;
+    const endExclusive = thread.anchor.primary.end.offset_utf16 + 1;
+    if (start < 0 || endExclusive < start || endExclusive > documentText.length)
+        return false;
+    return documentText.slice(start, endExclusive) === thread.anchor.fallback.quote;
+};
 export const evaluateThreadRelevance = (thread, context, checkedAt = nowUtc()) => {
     const next = clone(thread);
     const timelineKind = context.timelineKind ?? next.thread_version_context?.kind ?? 'workspace';
+    // 1) direct anchor match in current file
+    const directMatch = hasDirectAnchorMatch(next, context.documentText);
+    // 2) explicit reanchor stage
+    let wasReanchored = false;
+    if (!directMatch && context.documentText && context.fileExists !== false) {
+        const reanchorResult = reanchor(context.documentText, next.anchor);
+        if (reanchorResult.start && reanchorResult.end) {
+            next.anchor.primary.start = reanchorResult.start;
+            next.anchor.primary.end = reanchorResult.end;
+            next.anchor.anchor_confidence = reanchorResult.anchor_confidence;
+        }
+        if (reanchorResult.anchor_confidence === 'broken' || !reanchorResult.start || !reanchorResult.end) {
+            setRelevance(next, 'orphaned', 'ANCHOR_NOT_FOUND', checkedAt, context.headCommit);
+            return next;
+        }
+        wasReanchored = reanchorResult.reanchored;
+    }
+    // 3) workspace-first delta checks
+    if (timelineKind === 'workspace' || timelineKind === 'hybrid') {
+        const hasWorkspaceContext = !!context.workspaceSnapshotId || !!context.workspaceFileHash || !!context.workspaceFileMtime || !!context.workspaceActorSessionId;
+        if (!hasWorkspaceContext) {
+            setRelevance(next, 'outdated', 'WORKSPACE_CONTEXT_UNAVAILABLE', checkedAt, context.headCommit);
+            return next;
+        }
+        const tvc = next.thread_version_context;
+        if (tvc?.workspace_snapshot_id && context.workspaceSnapshotId && tvc.workspace_snapshot_id !== context.workspaceSnapshotId) {
+            setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+            return next;
+        }
+        if (tvc?.workspace_file_hash && context.workspaceFileHash && tvc.workspace_file_hash !== context.workspaceFileHash) {
+            setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+            return next;
+        }
+        if (tvc?.workspace_file_mtime && context.workspaceFileMtime && tvc.workspace_file_mtime !== context.workspaceFileMtime) {
+            setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+            return next;
+        }
+        if (tvc?.workspace_actor_session_id &&
+            context.workspaceActorSessionId &&
+            tvc.workspace_actor_session_id !== context.workspaceActorSessionId) {
+            setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+            return next;
+        }
+    }
+    // 4) git path continuity checks (when git context exists)
+    if (timelineKind === 'git' || timelineKind === 'hybrid') {
+        if (context.gitAvailable === false) {
+            setRelevance(next, 'outdated', 'COMMIT_CONTEXT_UNAVAILABLE', checkedAt, context.headCommit);
+            return next;
+        }
+        if (context.fileExists === false) {
+            setRelevance(next, 'orphaned', 'FILE_DELETED', checkedAt, context.headCommit);
+            return next;
+        }
+        if (next.thread_version_context?.file_path_at_create && context.currentPath && next.thread_version_context.file_path_at_create !== context.currentPath) {
+            setRelevance(next, 'outdated', 'FILE_RENAMED', checkedAt, context.headCommit);
+            return next;
+        }
+        // 5) git version delta checks when git context exists
+        if (next.thread_version_context?.head_commit && context.headCommit && next.thread_version_context.head_commit !== context.headCommit) {
+            setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+            return next;
+        }
+        if (next.thread_version_context?.base_commit && context.baseCommit && next.thread_version_context.base_commit !== context.baseCommit) {
+            setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+            return next;
+        }
+        if (next.thread_version_context?.head_blob_sha && context.headBlobSha && next.thread_version_context.head_blob_sha !== context.headBlobSha) {
+            setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+            return next;
+        }
+        if (next.thread_version_context?.base_blob_sha && context.baseBlobSha && next.thread_version_context.base_blob_sha !== context.baseBlobSha) {
+            setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
+            return next;
+        }
+    }
+    if (wasReanchored) {
+        setRelevance(next, 'outdated', 'ANCHOR_RELOCATED', checkedAt, context.headCommit);
+        return next;
+    }
     if (!next.anchor.primary.start || !next.anchor.primary.end || next.anchor.anchor_confidence === 'broken') {
         setRelevance(next, 'orphaned', 'ANCHOR_NOT_FOUND', checkedAt, context.headCommit);
-        return next;
-    }
-    if ((timelineKind === 'workspace' || timelineKind === 'hybrid') && !context.workspaceSnapshotId) {
-        setRelevance(next, 'outdated', 'WORKSPACE_CONTEXT_UNAVAILABLE', checkedAt, context.headCommit);
-        return next;
-    }
-    if ((timelineKind === 'git' || timelineKind === 'hybrid') && context.gitAvailable === false) {
-        setRelevance(next, 'outdated', 'COMMIT_CONTEXT_UNAVAILABLE', checkedAt, context.headCommit);
-        return next;
-    }
-    if (next.thread_version_context?.file_path_at_create && context.currentPath && next.thread_version_context.file_path_at_create !== context.currentPath) {
-        setRelevance(next, 'outdated', 'FILE_RENAMED', checkedAt, context.headCommit);
-        return next;
-    }
-    if (next.thread_version_context?.workspace_file_hash && context.workspaceFileHash && next.thread_version_context.workspace_file_hash !== context.workspaceFileHash) {
-        setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
-        return next;
-    }
-    if (next.thread_version_context?.head_blob_sha && context.headBlobSha && next.thread_version_context.head_blob_sha !== context.headBlobSha) {
-        setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
         return next;
     }
     setRelevance(next, 'active', undefined, checkedAt, context.headCommit);

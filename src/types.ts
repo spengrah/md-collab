@@ -194,12 +194,17 @@ export interface ReanchorOutput {
 
 export interface RelevanceContext {
   timelineKind?: TimelineKind;
+  documentText?: string;
+  fileExists?: boolean;
   workspaceSnapshotId?: string;
   workspaceFileHash?: string;
   workspaceFileMtime?: string;
+  workspaceActorSessionId?: string;
   currentPath?: string;
   headCommit?: string;
+  baseCommit?: string;
   headBlobSha?: string;
+  baseBlobSha?: string;
   gitAvailable?: boolean;
 }
 

@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.1.0",
+  "document": { "path": "doc.md" },
+  "threads": [
+    {
+      "thread_id": "t1",
+      "status": "open",
+      "anchor": {
+        "primary": {
+          "start": { "line": 1, "column": 1, "offset_utf16": 0 },
+          "end": { "line": 1, "column": 3, "offset_utf16": 2 }
+        },
+        "fallback": {
+          "quote": "abc",
+          "prefix": "",
+          "suffix": "",
+          "quote_hash": "sha256:abc",
+          "context_hash": "sha256:def"
+        },
+        "anchor_confidence": "high"
+      },
+      "author": { "author_id": "u1", "author_label": "User", "verified": null },
+      "messages": [
+        {
+          "message_id": "m1",
+          "author": { "author_id": "u1", "author_label": "User", "verified": null },
+          "body": "note",
+          "created_at": "2026-02-14T00:00:00Z",
+          "edited_at": null,
+          "message_version_context": { "kind": "workspace" }
+        }
+      ],
+      "created_at": "2026-02-14T00:00:00Z",
+      "updated_at": "2026-02-14T00:00:00Z",
+      "thread_version_context": { "kind": "git", "head_commit": "abc123" }
+    }
+  ]
+}

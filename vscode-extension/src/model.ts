@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname, relative } from 'node:path';
+import { execSync } from 'node:child_process';
 import {
   applyReanchor,
   createThread,
@@ -46,6 +48,13 @@ export interface Config {
   reanchorOnSave: boolean;
   workspaceSnapshotId?: string;
   timelineKind?: TimelineKind;
+}
+
+export interface SuggestionBaseVersion {
+  source: 'git' | 'workspace' | 'unavailable';
+  title: string;
+  content?: string;
+  reason?: string;
 }
 
 export class SidecarConflictError extends Error {
@@ -130,16 +139,89 @@ export const loadStateForDocument = (docPath: string): DocumentThreadState => {
   }
 };
 
-const evaluateRelevance = (sidecar: Sidecar, config?: Config): Sidecar =>
-  evaluateSidecarRelevance(sidecar, {
-    timelineKind: config?.timelineKind,
+const relevanceCache = new Map<string, Sidecar>();
+
+const timelineKey = (state: DocumentThreadState, config?: Config): string => {
+  const snapshot = config?.workspaceSnapshotId ?? '';
+  const tk = config?.timelineKind ?? 'workspace';
+  const revision = state.revisionToken.hash ?? state.revisionToken.mtimeMs ?? 'none';
+  const sidecarSig = createHash('sha256').update(JSON.stringify(state.sidecar)).digest('hex');
+  let head = '';
+  if (tk === 'git' || tk === 'hybrid') {
+    try {
+      head = execSync('git rev-parse HEAD', { cwd: dirname(state.documentPath), encoding: 'utf8' }).trim();
+    } catch {
+      head = 'git-unavailable';
+    }
+  }
+  return `${state.documentPath}::${revision}::${sidecarSig}::${tk}::${snapshot}::${head}`;
+};
+
+export const invalidateRelevanceCache = (documentPath?: string): void => {
+  if (!documentPath) {
+    relevanceCache.clear();
+    return;
+  }
+  for (const key of relevanceCache.keys()) {
+    if (key.startsWith(`${documentPath}::`)) relevanceCache.delete(key);
+  }
+};
+
+const hashText = (value: string) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
+
+const collectContext = (state: DocumentThreadState, config?: Config) => {
+  const fileExists = existsSync(state.documentPath);
+  const documentText = fileExists ? readFileSync(state.documentPath, 'utf8') : undefined;
+  const workspaceFileHash = documentText ? hashText(documentText) : undefined;
+  const workspaceFileMtime = fileExists ? new Date(statSync(state.documentPath).mtimeMs).toISOString() : undefined;
+
+  const kind = config?.timelineKind;
+  let gitAvailable: boolean | undefined;
+  let headCommit: string | undefined;
+  let headBlobSha: string | undefined;
+  let currentPath = state.documentPath;
+
+  if (kind === 'git' || kind === 'hybrid') {
+    try {
+      const cwd = dirname(state.documentPath);
+      headCommit = execSync('git rev-parse HEAD', { cwd, encoding: 'utf8' }).trim();
+      const relPath = relative(cwd, state.documentPath).replace(/\\/g, '/');
+      currentPath = relPath;
+      headBlobSha = execSync(`git rev-parse HEAD:${relPath}`, { cwd, encoding: 'utf8' }).trim();
+      gitAvailable = true;
+    } catch {
+      gitAvailable = false;
+    }
+  }
+
+  return {
+    timelineKind: kind,
+    documentText,
+    fileExists,
     workspaceSnapshotId: config?.workspaceSnapshotId,
-    currentPath: sidecar.document.path,
-  });
+    workspaceFileHash,
+    workspaceFileMtime,
+    currentPath,
+    headCommit,
+    headBlobSha,
+    gitAvailable,
+  };
+};
+
+const evaluateRelevance = (state: DocumentThreadState, config?: Config): Sidecar => {
+  const key = timelineKey(state, config);
+  const cached = relevanceCache.get(key);
+  if (cached) return structuredClone(cached);
+
+  const evaluated = evaluateSidecarRelevance(state.sidecar, collectContext(state, config));
+  relevanceCache.set(key, structuredClone(evaluated));
+  return evaluated;
+};
 
 export const reloadState = (state: DocumentThreadState, config?: Config): DocumentThreadState => {
   const loaded = loadStateForDocument(state.documentPath);
-  return { ...loaded, sidecar: evaluateRelevance(loaded.sidecar, config) };
+  invalidateRelevanceCache(state.documentPath);
+  return { ...loaded, sidecar: evaluateRelevance(loaded, config) };
 };
 
 const authorFromConfig = (config: Config): Author => ({
@@ -155,6 +237,7 @@ const persist = (state: DocumentThreadState): DocumentThreadState => {
   }
 
   writeSidecarFileAtomic(state.sidecarPath, state.sidecar);
+  invalidateRelevanceCache(state.documentPath);
   return {
     ...state,
     sidecarExists: true,
@@ -181,10 +264,12 @@ export const addComment = (
     now: ts,
     timelineKind: config.timelineKind ?? 'workspace',
     workspaceSnapshotId: config.workspaceSnapshotId ?? ts,
+    workspaceFileHash: hashText(documentText),
+    workspaceFileMtime: existsSync(state.documentPath) ? new Date(statSync(state.documentPath).mtimeMs).toISOString() : undefined,
     filePathAtCreate: state.documentPath,
   });
 
-  return persist({ ...state, sidecar: evaluateRelevance(nextSidecar, config) });
+  return persist({ ...state, sidecar: evaluateRelevance({ ...state, sidecar: nextSidecar }, config) });
 };
 
 export const addReply = (state: DocumentThreadState, threadId: string, body: string, config: Config): DocumentThreadState => {
@@ -198,7 +283,7 @@ export const addReply = (state: DocumentThreadState, threadId: string, body: str
     timelineKind: config.timelineKind ?? 'workspace',
     workspaceSnapshotId: config.workspaceSnapshotId ?? ts,
   });
-  return persist({ ...state, sidecar: evaluateRelevance(nextSidecar, config) });
+  return persist({ ...state, sidecar: evaluateRelevance({ ...state, sidecar: nextSidecar }, config) });
 };
 
 export const resolve = (state: DocumentThreadState, threadId: string, config: Config): DocumentThreadState => {
@@ -208,7 +293,7 @@ export const resolve = (state: DocumentThreadState, threadId: string, config: Co
     actor: authorFromConfig(config),
     now: now(),
   });
-  return persist({ ...state, sidecar: evaluateRelevance(nextSidecar, config) });
+  return persist({ ...state, sidecar: evaluateRelevance({ ...state, sidecar: nextSidecar }, config) });
 };
 
 export const reopen = (state: DocumentThreadState, threadId: string, config: Config): DocumentThreadState => {
@@ -218,7 +303,7 @@ export const reopen = (state: DocumentThreadState, threadId: string, config: Con
     actor: authorFromConfig(config),
     now: now(),
   });
-  return persist({ ...state, sidecar: evaluateRelevance(nextSidecar, config) });
+  return persist({ ...state, sidecar: evaluateRelevance({ ...state, sidecar: nextSidecar }, config) });
 };
 
 export const reanchorAll = (state: DocumentThreadState, documentText: string, config?: Config): DocumentThreadState => {
@@ -234,7 +319,7 @@ export const reanchorAll = (state: DocumentThreadState, documentText: string, co
   }
 
   if (!changed) return state;
-  return persist({ ...state, sidecar: evaluateRelevance(next, config) });
+  return persist({ ...state, sidecar: evaluateRelevance({ ...state, sidecar: next }, config) });
 };
 
 export const visibleInlineThreads = (state: DocumentThreadState, showResolvedInline: boolean) =>
@@ -247,8 +332,6 @@ export const timelineBadge = (kind: TimelineKind | undefined): 'local draft' | '
   if (kind === 'hybrid') return 'hybrid';
   return 'local draft';
 };
-
-const hashText = (value: string) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
 
 export const proposeThreadSuggestion = (
   state: DocumentThreadState,
@@ -305,3 +388,40 @@ export const rejectThreadSuggestion = (
       now: now(),
     }),
   });
+
+export const getSuggestionBaseVersion = (
+  state: DocumentThreadState,
+  threadId: string,
+  suggestionId: string,
+): SuggestionBaseVersion => {
+  const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
+  const suggestion = thread?.suggestions?.find((s) => s.suggestion_id === suggestionId);
+  if (!thread || !suggestion) {
+    return { source: 'unavailable', title: 'Suggestion base version unavailable', reason: 'Thread or suggestion not found.' };
+  }
+
+  const tvc = thread.thread_version_context;
+  if (tvc?.base_commit && tvc.file_path_at_create) {
+    try {
+      const cwd = dirname(state.documentPath);
+      const content = execSync(`git show ${tvc.base_commit}:${tvc.file_path_at_create}`, { cwd, encoding: 'utf8' });
+      return {
+        source: 'git',
+        title: `Base version (${tvc.base_commit.slice(0, 12)}:${tvc.file_path_at_create})`,
+        content,
+      };
+    } catch {
+      return {
+        source: 'unavailable',
+        title: 'Suggestion base version unavailable',
+        reason: 'Git base commit/path lookup failed in current workspace.',
+      };
+    }
+  }
+
+  return {
+    source: 'workspace',
+    title: 'Suggestion base version unavailable',
+    reason: 'No git base commit metadata available for this suggestion in workspace-first mode.',
+  };
+};

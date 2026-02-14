@@ -35,10 +35,22 @@ export interface Thread {
   messages: Message[];
   created_at: string;
   updated_at: string;
-  thread_version_context?: { kind: TimelineKind; workspace_snapshot_id?: string; file_path_at_create?: string; workspace_file_hash?: string; head_blob_sha?: string };
+  thread_version_context?: {
+    kind: TimelineKind;
+    workspace_snapshot_id?: string;
+    file_path_at_create?: string;
+    workspace_file_hash?: string;
+    head_blob_sha?: string;
+    base_commit?: string;
+    head_commit?: string;
+  };
   relevance_state?: 'active' | 'outdated' | 'orphaned';
   relevance_reason?: string;
-  suggestions?: Array<{ suggestion_id: string; status: 'proposed' | 'applied' | 'rejected' | 'obsolete'; proposed_edit: { replacement_text: string } }>;
+  suggestions?: Array<{
+    suggestion_id: string;
+    status: 'proposed' | 'applied' | 'rejected' | 'obsolete';
+    proposed_edit: { replacement_text: string; anchor: Anchor; before_text_hash?: string };
+  }>;
 }
 
 export interface Sidecar { schema_version: '0.1.0'; document: { path: string }; threads: Thread[]; }

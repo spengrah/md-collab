@@ -65,6 +65,41 @@ describe('review v0.2 additive model', () => {
     expect(changed.threads[0].relevance_reason).toBe('CONTENT_CHANGED');
   });
 
+  it('sets ANCHOR_RELOCATED and FILE_DELETED reasons through deterministic pipeline ordering', () => {
+    const base = parseSidecar('{"schema_version":"0.1.0","document":{"path":"doc.md"},"threads":[]}');
+    const text = 'hello world';
+    const created = createThread({
+      sidecar: base,
+      text,
+      startOffsetUtf16: 0,
+      endOffsetUtf16: 5,
+      body: 'note',
+      author,
+      threadId: 't1',
+      messageId: 'm1',
+      timelineKind: 'git',
+      baseCommit: 'a',
+      headCommit: 'a',
+      filePathAtCreate: 'doc.md',
+      now: '2026-02-14T17:00:00Z',
+    });
+
+    const relocated = evaluateSidecarRelevance(
+      created,
+      { timelineKind: 'workspace', workspaceSnapshotId: 'ws-1', documentText: 'x hello world' },
+      '2026-02-14T17:05:00Z',
+    );
+    expect(relocated.threads[0].relevance_reason).toBe('ANCHOR_RELOCATED');
+
+    const deleted = evaluateSidecarRelevance(
+      created,
+      { timelineKind: 'git', gitAvailable: true, fileExists: false, headCommit: 'a' },
+      '2026-02-14T17:05:01Z',
+    );
+    expect(deleted.threads[0].relevance_state).toBe('orphaned');
+    expect(deleted.threads[0].relevance_reason).toBe('FILE_DELETED');
+  });
+
   it('suggestion lifecycle preserves hash mismatch safety and appends audit', () => {
     const base = parseSidecar('{"schema_version":"0.1.0","document":{"path":"doc.md"},"threads":[]}');
     const text = 'hello world';

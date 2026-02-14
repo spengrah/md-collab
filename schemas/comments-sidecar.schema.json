@@ -136,7 +136,17 @@
         "seen_workspace_snapshot_id": { "type": "string" },
         "seen_head_commit": { "type": "string" },
         "seen_blob_sha": { "type": "string" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "enum": ["workspace", "hybrid"] } } },
+          "then": { "required": ["seen_workspace_snapshot_id"] }
+        },
+        {
+          "if": { "properties": { "kind": { "enum": ["git", "hybrid"] } } },
+          "then": { "required": ["seen_head_commit"] }
+        }
+      ]
     },
     "threadVersionContext": {
       "type": "object",
@@ -154,7 +164,17 @@
         "base_blob_sha": { "type": "string" },
         "head_blob_sha": { "type": "string" },
         "anchor_at_create": { "type": "object", "additionalProperties": true }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "enum": ["workspace", "hybrid"] } } },
+          "then": { "required": ["workspace_snapshot_id"] }
+        },
+        {
+          "if": { "properties": { "kind": { "enum": ["git", "hybrid"] } } },
+          "then": { "required": ["base_commit", "head_commit"] }
+        }
+      ]
     },
     "thread": {
       "type": "object",

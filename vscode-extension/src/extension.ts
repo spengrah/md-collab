@@ -14,6 +14,7 @@ import {
   proposeThreadSuggestion,
   applyThreadSuggestion,
   rejectThreadSuggestion,
+  getSuggestionBaseVersion,
   type Config,
   type DocumentThreadState,
 } from './model.js';
@@ -135,7 +136,8 @@ const toRange = (thread: DocumentThreadState['sidecar']['threads'][number]): vsc
 const applyDecorations = (
   editor: vscode.TextEditor | undefined,
   threadTree: ThreadTreeProvider,
-  decorationMap: Map<string, vscode.TextEditorDecorationType>,
+  markerDecorationMap: Map<string, vscode.TextEditorDecorationType>,
+  rangeDecorationMap: Map<string, vscode.TextEditorDecorationType>,
 ) => {
   if (!editor || editor.document.languageId !== 'markdown') {
     threadTree.setState(undefined);
@@ -146,11 +148,18 @@ const applyDecorations = (
   if (!state) return;
 
   const config = getConfig();
-  for (const decorationType of decorationMap.values()) {
+  for (const decorationType of [...markerDecorationMap.values(), ...rangeDecorationMap.values()]) {
     editor.setDecorations(decorationType, []);
   }
 
-  const buckets: Record<string, vscode.DecorationOptions[]> = {
+  const markerBuckets: Record<string, vscode.DecorationOptions[]> = {
+    high: [],
+    medium: [],
+    low: [],
+    broken: [],
+  };
+
+  const rangeBuckets: Record<string, vscode.DecorationOptions[]> = {
     high: [],
     medium: [],
     low: [],
@@ -159,7 +168,7 @@ const applyDecorations = (
 
   for (const thread of visibleInlineThreads(state, config.showResolvedInline)) {
     if (thread.anchor.anchor_confidence === 'broken' || !thread.anchor.primary.start || !thread.anchor.primary.end) {
-      buckets.broken.push({
+      markerBuckets.broken.push({
         range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
         hoverMessage: `$(warning) Broken anchor for thread ${thread.thread_id}. Use reanchor command.`,
       });
@@ -167,14 +176,19 @@ const applyDecorations = (
     }
 
     const start = thread.anchor.primary.start;
-    const range = new vscode.Range(
+    const markerRange = new vscode.Range(
       new vscode.Position(Math.max(0, start.line - 1), Math.max(0, start.column - 1)),
       new vscode.Position(Math.max(0, start.line - 1), Math.max(0, start.column - 1)),
     );
+    const end = thread.anchor.primary.end;
+    const highlightRange = new vscode.Range(
+      new vscode.Position(Math.max(0, start.line - 1), Math.max(0, start.column - 1)),
+      new vscode.Position(Math.max(0, end.line - 1), Math.max(0, end.column - 1)),
+    );
     const relevance = thread.relevance_state ?? 'active';
     const timeline = timelineBadge(thread.thread_version_context?.kind);
-    buckets[thread.anchor.anchor_confidence].push({
-      range,
+    markerBuckets[thread.anchor.anchor_confidence].push({
+      range: markerRange,
       hoverMessage: `md-collab thread ${thread.thread_id} (${thread.anchor.anchor_confidence})\nrelevance: ${relevance}\ntimeline: ${timeline}`,
       renderOptions: {
         after: {
@@ -182,12 +196,13 @@ const applyDecorations = (
         },
       },
     });
+    rangeBuckets[thread.anchor.anchor_confidence].push({ range: highlightRange });
   }
 
-  editor.setDecorations(decorationMap.get('high')!, buckets.high);
-  editor.setDecorations(decorationMap.get('medium')!, buckets.medium);
-  editor.setDecorations(decorationMap.get('low')!, buckets.low);
-  editor.setDecorations(decorationMap.get('broken')!, buckets.broken);
+  for (const key of ['high', 'medium', 'low', 'broken']) {
+    editor.setDecorations(markerDecorationMap.get(key)!, markerBuckets[key]);
+    editor.setDecorations(rangeDecorationMap.get(key)!, rangeBuckets[key]);
+  }
 };
 
 export function activate(context: vscode.ExtensionContext) {
@@ -200,23 +215,29 @@ export function activate(context: vscode.ExtensionContext) {
     borderColor: new vscode.ThemeColor('editor.findMatchBorder'),
   });
 
-  const decorationMap = new Map<string, vscode.TextEditorDecorationType>([
+  const markerDecorationMap = new Map<string, vscode.TextEditorDecorationType>([
     [
       'high',
       vscode.window.createTextEditorDecorationType({
         overviewRulerColor: new vscode.ThemeColor('editorInfo.foreground'),
+        gutterIconPath: vscode.Uri.joinPath(context.extensionUri, 'resources', 'comment.svg'),
+        gutterIconSize: 'contain',
       }),
     ],
     [
       'medium',
       vscode.window.createTextEditorDecorationType({
         overviewRulerColor: new vscode.ThemeColor('editorWarning.foreground'),
+        gutterIconPath: vscode.Uri.joinPath(context.extensionUri, 'resources', 'comment.svg'),
+        gutterIconSize: 'contain',
       }),
     ],
     [
       'low',
       vscode.window.createTextEditorDecorationType({
         overviewRulerColor: new vscode.ThemeColor('editorWarning.foreground'),
+        gutterIconPath: vscode.Uri.joinPath(context.extensionUri, 'resources', 'comment.svg'),
+        gutterIconSize: 'contain',
         opacity: '0.75',
       }),
     ],
@@ -228,14 +249,21 @@ export function activate(context: vscode.ExtensionContext) {
     ],
   ]);
 
-  context.subscriptions.push(transientNavigateDecoration, ...decorationMap.values());
+  const rangeDecorationMap = new Map<string, vscode.TextEditorDecorationType>([
+    ['high', vscode.window.createTextEditorDecorationType({ backgroundColor: new vscode.ThemeColor('editor.wordHighlightStrongBackground') })],
+    ['medium', vscode.window.createTextEditorDecorationType({ backgroundColor: new vscode.ThemeColor('editor.wordHighlightBackground') })],
+    ['low', vscode.window.createTextEditorDecorationType({ backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground') })],
+    ['broken', vscode.window.createTextEditorDecorationType({})],
+  ]);
+
+  context.subscriptions.push(transientNavigateDecoration, ...markerDecorationMap.values(), ...rangeDecorationMap.values());
 
   const refresh = () => {
     const editor = vscode.window.activeTextEditor;
     if (editor?.document.languageId === 'markdown') {
       lastActiveMarkdownDocumentKey = editor.document.uri.toString();
     }
-    applyDecorations(editor, threadTree, decorationMap);
+    applyDecorations(editor, threadTree, markerDecorationMap, rangeDecorationMap);
   };
 
   const setActiveSidecarWatcher = (editor: vscode.TextEditor | undefined) => {
@@ -466,9 +494,13 @@ export function activate(context: vscode.ExtensionContext) {
       const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
       if (!thread) return;
       const beforeText = editor.document.getText(editor.selection);
-      const next = proposeThreadSuggestion(state, threadId, thread.anchor, beforeText, replacement, config);
-      stateByDocument.set(editor.document.uri.toString(), next);
-      refresh();
+      try {
+        const next = proposeThreadSuggestion(state, threadId, thread.anchor, beforeText, replacement, config);
+        stateByDocument.set(editor.document.uri.toString(), next);
+        refresh();
+      } catch (err) {
+        explainMutationError(err);
+      }
     }),
 
     vscode.commands.registerCommand('mdCollab.applySuggestion', async (argThreadId?: string, argSuggestionId?: string) => {
@@ -492,10 +524,29 @@ export function activate(context: vscode.ExtensionContext) {
       if (!suggestionId) return;
       const suggestion = suggestions.find((s) => s.suggestion_id === suggestionId);
       if (!suggestion) return;
-      const beforeText = editor.document.getText(editor.selection);
-      const next = applyThreadSuggestion(state, threadId, suggestionId, beforeText, config);
-      stateByDocument.set(editor.document.uri.toString(), next);
-      refresh();
+
+      const start = suggestion.proposed_edit.anchor.primary.start;
+      const end = suggestion.proposed_edit.anchor.primary.end;
+      const range = new vscode.Range(
+        new vscode.Position(Math.max(0, start.line - 1), Math.max(0, start.column - 1)),
+        new vscode.Position(Math.max(0, end.line - 1), Math.max(0, end.column - 1)),
+      );
+      const beforeText = editor.document.getText(range);
+
+      try {
+        const didEdit = await editor.edit((editBuilder) => {
+          editBuilder.replace(range, suggestion.proposed_edit.replacement_text);
+        });
+        if (!didEdit) {
+          void vscode.window.showWarningMessage('md-collab: Apply suggestion canceled before document mutation.');
+          return;
+        }
+        const next = applyThreadSuggestion(state, threadId, suggestionId, beforeText, config);
+        stateByDocument.set(editor.document.uri.toString(), next);
+        refresh();
+      } catch (err) {
+        explainMutationError(err);
+      }
     }),
 
     vscode.commands.registerCommand('mdCollab.rejectSuggestion', async (argThreadId?: string, argSuggestionId?: string) => {
@@ -512,13 +563,40 @@ export function activate(context: vscode.ExtensionContext) {
       const suggestionId =
         argSuggestionId ?? (await vscode.window.showQuickPick(suggestions.map((s) => ({ label: s.suggestion_id }))))?.label;
       if (!suggestionId) return;
-      const next = rejectThreadSuggestion(state, threadId, suggestionId, config);
-      stateByDocument.set(editor.document.uri.toString(), next);
-      refresh();
+      try {
+        const next = rejectThreadSuggestion(state, threadId, suggestionId, config);
+        stateByDocument.set(editor.document.uri.toString(), next);
+        refresh();
+      } catch (err) {
+        explainMutationError(err);
+      }
     }),
 
-    vscode.commands.registerCommand('mdCollab.viewSuggestionBaseVersion', async () => {
-      void vscode.window.showInformationMessage('md-collab: view base version is not yet available in this build.');
+    vscode.commands.registerCommand('mdCollab.viewSuggestionBaseVersion', async (argThreadId?: string, argSuggestionId?: string) => {
+      const editor = vscode.window.activeTextEditor;
+      const state = loadForEditor(editor);
+      if (!editor || !state) return;
+      const threadId = await threadIdFromArgOrPick(state, 'any', argThreadId);
+      if (!threadId) return;
+      const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
+      const suggestions = thread?.suggestions ?? [];
+      if (!thread || suggestions.length === 0) return;
+      const suggestionId =
+        argSuggestionId ?? (await vscode.window.showQuickPick(suggestions.map((s) => ({ label: s.suggestion_id }))))?.label;
+      if (!suggestionId) return;
+
+      const base = getSuggestionBaseVersion(state, threadId, suggestionId);
+      if (!base.content) {
+        void vscode.window.showInformationMessage(`md-collab: ${base.reason ?? 'base version unavailable'}`);
+        return;
+      }
+
+      const doc = await vscode.workspace.openTextDocument({
+        content: base.content,
+        language: 'markdown',
+      });
+      await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
+      void vscode.window.showInformationMessage(`md-collab: opened ${base.title}`);
     }),
   );
 
