@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { DocumentThreadState } from './model.js';
+import { timelineBadge, type DocumentThreadState } from './model.js';
 
 type GroupKind = 'open' | 'resolved';
 
@@ -32,10 +32,10 @@ class BrokenAnchorRelinkItem extends vscode.TreeItem {
 }
 
 export class ThreadItem extends vscode.TreeItem {
-  constructor(public readonly threadId: string, label: string, status: 'open' | 'resolved') {
+  constructor(public readonly threadId: string, label: string, status: 'open' | 'resolved', timeline: string) {
     super(label, vscode.TreeItemCollapsibleState.Expanded);
     this.contextValue = `mdCollab.thread.${status}`;
-    this.description = status;
+    this.description = `${status} · ${timeline}`;
     this.command = { command: 'mdCollab.navigateToThread', title: 'Jump to Thread', arguments: [threadId] };
     this.iconPath = new vscode.ThemeIcon(status === 'open' ? 'comment-discussion' : 'pass-filled');
   }
@@ -95,7 +95,7 @@ export class ThreadTreeProvider implements vscode.TreeDataProvider<vscode.TreeIt
       return threads.map((thread) => {
         const latest = thread.messages[thread.messages.length - 1];
         const snippet = latest?.body?.slice(0, 60).replace(/\s+/g, ' ') || '(no messages)';
-        return new ThreadItem(thread.thread_id, snippet, thread.status);
+        return new ThreadItem(thread.thread_id, snippet, thread.status, timelineBadge(thread.thread_version_context?.kind));
       });
     }
 

@@ -10,6 +10,10 @@ import {
   reopen,
   resolve,
   visibleInlineThreads,
+  timelineBadge,
+  proposeThreadSuggestion,
+  applyThreadSuggestion,
+  rejectThreadSuggestion,
   type Config,
   type DocumentThreadState,
 } from './model.js';
@@ -27,6 +31,8 @@ const getConfig = (): Config => {
     authorLabel: config.get<string>('authorLabel', '').trim(),
     showResolvedInline: config.get<boolean>('showResolvedInline', false),
     reanchorOnSave: config.get<boolean>('reanchorOnSave', true),
+    workspaceSnapshotId: config.get<string>('workspaceSnapshotId', '').trim() || undefined,
+    timelineKind: config.get<'workspace' | 'git' | 'hybrid'>('timelineKind', 'workspace'),
   };
 };
 
@@ -165,12 +171,14 @@ const applyDecorations = (
       new vscode.Position(Math.max(0, start.line - 1), Math.max(0, start.column - 1)),
       new vscode.Position(Math.max(0, start.line - 1), Math.max(0, start.column - 1)),
     );
+    const relevance = thread.relevance_state ?? 'active';
+    const timeline = timelineBadge(thread.thread_version_context?.kind);
     buckets[thread.anchor.anchor_confidence].push({
       range,
-      hoverMessage: `md-collab thread ${thread.thread_id} (${thread.anchor.anchor_confidence})`,
+      hoverMessage: `md-collab thread ${thread.thread_id} (${thread.anchor.anchor_confidence})\nrelevance: ${relevance}\ntimeline: ${timeline}`,
       renderOptions: {
         after: {
-          contentText: ' 💬',
+          contentText: ` 💬 ${relevance} · ${timeline}`,
         },
       },
     });
@@ -243,7 +251,7 @@ export function activate(context: vscode.ExtensionContext) {
     const reloadFromDisk = () => {
       const key = editor.document.uri.toString();
       const current = stateByDocument.get(key);
-      const next = current ? reloadState(current) : loadStateForDocument(editor.document.uri.fsPath);
+      const next = current ? reloadState(current, getConfig()) : loadStateForDocument(editor.document.uri.fsPath);
       stateByDocument.set(key, next);
       refresh();
     };
@@ -263,7 +271,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (!editor) return;
       const state = loadForEditor(editor);
       if (state && !state.readOnly) {
-        const reanchored = reanchorAll(state, doc.getText());
+        const reanchored = reanchorAll(state, doc.getText(), getConfig());
         stateByDocument.set(doc.uri.toString(), reanchored);
       }
       refresh();
@@ -275,7 +283,7 @@ export function activate(context: vscode.ExtensionContext) {
       const key = doc.uri.toString();
       const prior = stateByDocument.get(key) ?? loadStateForDocument(doc.uri.fsPath);
       if (prior.readOnly) return;
-      const reanchored = reanchorAll(prior, doc.getText());
+      const reanchored = reanchorAll(prior, doc.getText(), config);
       stateByDocument.set(key, reanchored);
       refresh();
     }),
@@ -417,7 +425,7 @@ export function activate(context: vscode.ExtensionContext) {
       const editor = vscode.window.activeTextEditor;
       const state = loadForEditor(editor);
       if (!editor || !state || state.readOnly) return;
-      const next = reanchorAll(state, editor.document.getText());
+      const next = reanchorAll(state, editor.document.getText(), getConfig());
       stateByDocument.set(editor.document.uri.toString(), next);
       refresh();
     }),
@@ -427,7 +435,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (!editor || editor.document.languageId !== 'markdown') return;
       const key = editor.document.uri.toString();
       const prior = stateByDocument.get(key);
-      const next = prior ? reloadState(prior) : loadStateForDocument(editor.document.uri.fsPath);
+      const next = prior ? reloadState(prior, getConfig()) : loadStateForDocument(editor.document.uri.fsPath);
       stateByDocument.set(key, next);
       refresh();
       void vscode.window.showInformationMessage('md-collab: Sidecar reloaded from disk.');
@@ -443,6 +451,74 @@ export function activate(context: vscode.ExtensionContext) {
       if (!state) return;
       const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(state.sidecarPath));
       await vscode.window.showTextDocument(doc, { preview: false });
+    }),
+
+    vscode.commands.registerCommand('mdCollab.proposeSuggestion', async (argThreadId?: string) => {
+      const editor = vscode.window.activeTextEditor;
+      const state = loadForEditor(editor);
+      if (!editor || !state || state.readOnly) return;
+      const config = getConfig();
+      if (!requireAuthor(config)) return;
+      const threadId = await threadIdFromArgOrPick(state, 'any', argThreadId);
+      if (!threadId || editor.selection.isEmpty) return;
+      const replacement = await vscode.window.showInputBox({ prompt: 'Suggested replacement text' });
+      if (replacement === undefined) return;
+      const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
+      if (!thread) return;
+      const beforeText = editor.document.getText(editor.selection);
+      const next = proposeThreadSuggestion(state, threadId, thread.anchor, beforeText, replacement, config);
+      stateByDocument.set(editor.document.uri.toString(), next);
+      refresh();
+    }),
+
+    vscode.commands.registerCommand('mdCollab.applySuggestion', async (argThreadId?: string, argSuggestionId?: string) => {
+      const editor = vscode.window.activeTextEditor;
+      const state = loadForEditor(editor);
+      if (!editor || !state || state.readOnly) return;
+      const config = getConfig();
+      if (!requireAuthor(config)) return;
+      const threadId = await threadIdFromArgOrPick(state, 'any', argThreadId);
+      if (!threadId) return;
+      const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
+      const suggestions = (thread?.suggestions ?? []).filter((s) => s.status === 'proposed');
+      if (!thread || suggestions.length === 0) return;
+      const suggestionId =
+        argSuggestionId ??
+        (
+          await vscode.window.showQuickPick(
+            suggestions.map((s) => ({ label: s.suggestion_id, description: s.proposed_edit.replacement_text.slice(0, 60) })),
+          )
+        )?.label;
+      if (!suggestionId) return;
+      const suggestion = suggestions.find((s) => s.suggestion_id === suggestionId);
+      if (!suggestion) return;
+      const beforeText = editor.document.getText(editor.selection);
+      const next = applyThreadSuggestion(state, threadId, suggestionId, beforeText, config);
+      stateByDocument.set(editor.document.uri.toString(), next);
+      refresh();
+    }),
+
+    vscode.commands.registerCommand('mdCollab.rejectSuggestion', async (argThreadId?: string, argSuggestionId?: string) => {
+      const editor = vscode.window.activeTextEditor;
+      const state = loadForEditor(editor);
+      if (!editor || !state || state.readOnly) return;
+      const config = getConfig();
+      if (!requireAuthor(config)) return;
+      const threadId = await threadIdFromArgOrPick(state, 'any', argThreadId);
+      if (!threadId) return;
+      const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
+      const suggestions = (thread?.suggestions ?? []).filter((s) => s.status === 'proposed');
+      if (!thread || suggestions.length === 0) return;
+      const suggestionId =
+        argSuggestionId ?? (await vscode.window.showQuickPick(suggestions.map((s) => ({ label: s.suggestion_id }))))?.label;
+      if (!suggestionId) return;
+      const next = rejectThreadSuggestion(state, threadId, suggestionId, config);
+      stateByDocument.set(editor.document.uri.toString(), next);
+      refresh();
+    }),
+
+    vscode.commands.registerCommand('mdCollab.viewSuggestionBaseVersion', async () => {
+      void vscode.window.showInformationMessage('md-collab: view base version is not yet available in this build.');
     }),
   );
 

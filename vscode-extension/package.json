@@ -25,7 +25,11 @@
     "onCommand:mdCollab.reanchorCurrentFile",
     "onCommand:mdCollab.reloadSidecar",
     "onCommand:mdCollab.openThreadPanel",
-    "onCommand:mdCollab.openSidecarForRepair"
+    "onCommand:mdCollab.openSidecarForRepair",
+    "onCommand:mdCollab.proposeSuggestion",
+    "onCommand:mdCollab.applySuggestion",
+    "onCommand:mdCollab.rejectSuggestion",
+    "onCommand:mdCollab.viewSuggestionBaseVersion"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -38,7 +42,11 @@
       { "command": "mdCollab.reanchorCurrentFile", "title": "md-collab: Reanchor Current File" },
       { "command": "mdCollab.reloadSidecar", "title": "md-collab: Reload Sidecar" },
       { "command": "mdCollab.openThreadPanel", "title": "md-collab: Open Thread Panel" },
-      { "command": "mdCollab.openSidecarForRepair", "title": "md-collab: Open Sidecar for Repair" }
+      { "command": "mdCollab.openSidecarForRepair", "title": "md-collab: Open Sidecar for Repair" },
+      { "command": "mdCollab.proposeSuggestion", "title": "md-collab: Propose Suggestion" },
+      { "command": "mdCollab.applySuggestion", "title": "md-collab: Apply Suggestion" },
+      { "command": "mdCollab.rejectSuggestion", "title": "md-collab: Reject Suggestion" },
+      { "command": "mdCollab.viewSuggestionBaseVersion", "title": "md-collab: View Suggestion Base Version" }
     ],
     "menus": {
       "editor/context": [
@@ -79,6 +87,17 @@
           "type": "boolean",
           "default": true,
           "description": "Reanchor comments automatically when a markdown file is saved."
+        },
+        "mdCollab.workspaceSnapshotId": {
+          "type": "string",
+          "default": "",
+          "description": "Optional workspace snapshot ID for local-draft timeline relevance checks."
+        },
+        "mdCollab.timelineKind": {
+          "type": "string",
+          "enum": ["workspace", "git", "hybrid"],
+          "default": "workspace",
+          "description": "Timeline provenance mode for new thread/message version context."
         }
       }
     },
