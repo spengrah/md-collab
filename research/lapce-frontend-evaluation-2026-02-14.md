@@ -193,3 +193,17 @@ Key evidence paths/URLs:
 Suggested gate:
 - If we need true inline discussion widgets + dedicated thread panel in Lapce, run a timeboxed fork-spike to estimate core touchpoints and maintenance cost.
 - Otherwise keep md-collab primary on VS Code extension path.
+
+## Fork spike final conclusion (2026-02-14)
+A fork-level in-app prototype was completed (panel kind + panel shell + editor affordance + panel/editor jump wiring + sidecar refresh concept). See:
+- `research/lapce-fork-spike/spike-report-final-2026-02-14.md`
+- `research/lapce-fork-spike/lapce-fork-thread-prototype.patch`
+
+Final decision after fork spike: **STOP Lapce fork as primary near-term path**; keep **VS Code primary**.
+
+Why:
+1. Required inline thread UX is still only partial in fork prototype (not true range-inline widget parity).
+2. Core maintenance surface remains high for small-team ownership.
+3. VS Code still offers materially higher delivery confidence for md-collab timelines.
+
+Confidence: **Medium-High**.

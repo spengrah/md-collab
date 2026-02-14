@@ -101,3 +101,5 @@ If results are mixed/ambiguous, choose **Stop** and continue VS Code path. Re-op
 
 ## Execution updates
 - 2026-02-14 initial execution pass report: `research/lapce-fork-spike/spike-report-initial-pass-2026-02-14.md`
+- 2026-02-14 final execution report: `research/lapce-fork-spike/spike-report-final-2026-02-14.md`
+- 2026-02-14 fork patch artifact: `research/lapce-fork-spike/lapce-fork-thread-prototype.patch`
