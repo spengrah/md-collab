@@ -322,30 +322,42 @@ export const evaluateThreadRelevance = (thread: Thread, context: RelevanceContex
       return next;
     }
 
+    const tvc = next.thread_version_context;
+    const missingRequiredGitContext =
+      !context.currentPath ||
+      !context.headCommit ||
+      (!!tvc?.base_commit && !context.baseCommit) ||
+      (!!tvc?.head_blob_sha && !context.headBlobSha) ||
+      (!!tvc?.base_blob_sha && !context.baseBlobSha);
+    if (missingRequiredGitContext) {
+      setRelevance(next, 'outdated', 'COMMIT_CONTEXT_UNAVAILABLE', checkedAt, context.headCommit);
+      return next;
+    }
+
     if (context.fileExists === false) {
       setRelevance(next, 'orphaned', 'FILE_DELETED', checkedAt, context.headCommit);
       return next;
     }
 
-    if (next.thread_version_context?.file_path_at_create && context.currentPath && next.thread_version_context.file_path_at_create !== context.currentPath) {
+    if (tvc?.file_path_at_create && tvc.file_path_at_create !== context.currentPath) {
       setRelevance(next, 'outdated', 'FILE_RENAMED', checkedAt, context.headCommit);
       return next;
     }
 
     // 5) git version delta checks when git context exists
-    if (next.thread_version_context?.head_commit && context.headCommit && next.thread_version_context.head_commit !== context.headCommit) {
+    if (tvc?.head_commit && tvc.head_commit !== context.headCommit) {
       setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
       return next;
     }
-    if (next.thread_version_context?.base_commit && context.baseCommit && next.thread_version_context.base_commit !== context.baseCommit) {
+    if (tvc?.base_commit && tvc.base_commit !== context.baseCommit) {
       setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
       return next;
     }
-    if (next.thread_version_context?.head_blob_sha && context.headBlobSha && next.thread_version_context.head_blob_sha !== context.headBlobSha) {
+    if (tvc?.head_blob_sha && tvc.head_blob_sha !== context.headBlobSha) {
       setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
       return next;
     }
-    if (next.thread_version_context?.base_blob_sha && context.baseBlobSha && next.thread_version_context.base_blob_sha !== context.baseBlobSha) {
+    if (tvc?.base_blob_sha && tvc.base_blob_sha !== context.baseBlobSha) {
       setRelevance(next, 'outdated', 'CONTENT_CHANGED', checkedAt, context.headCommit);
       return next;
     }

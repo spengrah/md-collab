@@ -93,11 +93,52 @@ describe('review v0.2 additive model', () => {
 
     const deleted = evaluateSidecarRelevance(
       created,
-      { timelineKind: 'git', gitAvailable: true, fileExists: false, headCommit: 'a' },
+      { timelineKind: 'git', gitAvailable: true, fileExists: false, headCommit: 'a', currentPath: 'doc.md', baseCommit: 'a' },
       '2026-02-14T17:05:01Z',
     );
     expect(deleted.threads[0].relevance_state).toBe('orphaned');
     expect(deleted.threads[0].relevance_reason).toBe('FILE_DELETED');
+  });
+
+  it('returns COMMIT_CONTEXT_UNAVAILABLE when git or hybrid required context is missing', () => {
+    const base = parseSidecar('{"schema_version":"0.1.0","document":{"path":"doc.md"},"threads":[]}');
+    const created = createThread({
+      sidecar: base,
+      text: 'hello world',
+      startOffsetUtf16: 0,
+      endOffsetUtf16: 5,
+      body: 'note',
+      author,
+      threadId: 't1',
+      messageId: 'm1',
+      timelineKind: 'git',
+      baseCommit: 'a',
+      headCommit: 'a',
+      headBlobSha: 'blob-a',
+      filePathAtCreate: 'doc.md',
+      now: '2026-02-14T17:00:00Z',
+    });
+
+    const missingHead = evaluateSidecarRelevance(
+      created,
+      { timelineKind: 'git', gitAvailable: true, currentPath: 'doc.md', baseCommit: 'a', headBlobSha: 'blob-a' },
+      '2026-02-14T17:06:00Z',
+    );
+    expect(missingHead.threads[0].relevance_reason).toBe('COMMIT_CONTEXT_UNAVAILABLE');
+
+    const missingBlob = evaluateSidecarRelevance(
+      created,
+      {
+        timelineKind: 'hybrid',
+        gitAvailable: true,
+        currentPath: 'doc.md',
+        headCommit: 'a',
+        baseCommit: 'a',
+        workspaceSnapshotId: 'ws-1',
+      },
+      '2026-02-14T17:06:01Z',
+    );
+    expect(missingBlob.threads[0].relevance_reason).toBe('COMMIT_CONTEXT_UNAVAILABLE');
   });
 
   it('suggestion lifecycle preserves hash mismatch safety and appends audit', () => {

@@ -140,31 +140,47 @@ export const loadStateForDocument = (docPath: string): DocumentThreadState => {
 };
 
 const relevanceCache = new Map<string, Sidecar>();
+const lastHeadByDocument = new Map<string, string>();
+
+const currentHeadSignature = (state: DocumentThreadState, config?: Config): string => {
+  const tk = config?.timelineKind ?? 'workspace';
+  if (tk !== 'git' && tk !== 'hybrid') return 'no-git-timeline';
+  try {
+    return execSync('git rev-parse HEAD', { cwd: dirname(state.documentPath), encoding: 'utf8' }).trim();
+  } catch {
+    return 'git-unavailable';
+  }
+};
+
+const invalidateRelevanceCacheForHeadChange = (state: DocumentThreadState, config?: Config): string => {
+  const head = currentHeadSignature(state, config);
+  const prev = lastHeadByDocument.get(state.documentPath);
+  if (prev !== undefined && prev !== head) {
+    invalidateRelevanceCache(state.documentPath);
+  }
+  lastHeadByDocument.set(state.documentPath, head);
+  return head;
+};
 
 const timelineKey = (state: DocumentThreadState, config?: Config): string => {
   const snapshot = config?.workspaceSnapshotId ?? '';
   const tk = config?.timelineKind ?? 'workspace';
   const revision = state.revisionToken.hash ?? state.revisionToken.mtimeMs ?? 'none';
   const sidecarSig = createHash('sha256').update(JSON.stringify(state.sidecar)).digest('hex');
-  let head = '';
-  if (tk === 'git' || tk === 'hybrid') {
-    try {
-      head = execSync('git rev-parse HEAD', { cwd: dirname(state.documentPath), encoding: 'utf8' }).trim();
-    } catch {
-      head = 'git-unavailable';
-    }
-  }
+  const head = invalidateRelevanceCacheForHeadChange(state, config);
   return `${state.documentPath}::${revision}::${sidecarSig}::${tk}::${snapshot}::${head}`;
 };
 
 export const invalidateRelevanceCache = (documentPath?: string): void => {
   if (!documentPath) {
     relevanceCache.clear();
+    lastHeadByDocument.clear();
     return;
   }
   for (const key of relevanceCache.keys()) {
     if (key.startsWith(`${documentPath}::`)) relevanceCache.delete(key);
   }
+  lastHeadByDocument.delete(documentPath);
 };
 
 const hashText = (value: string) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
@@ -217,6 +233,8 @@ const evaluateRelevance = (state: DocumentThreadState, config?: Config): Sidecar
   relevanceCache.set(key, structuredClone(evaluated));
   return evaluated;
 };
+
+export const __testOnlyRelevanceCacheSize = (): number => relevanceCache.size;
 
 export const reloadState = (state: DocumentThreadState, config?: Config): DocumentThreadState => {
   const loaded = loadStateForDocument(state.documentPath);
@@ -351,6 +369,57 @@ export const proposeThreadSuggestion = (
     now: now(),
   });
   return persist({ ...state, sidecar: next });
+};
+
+export type ApplySuggestionPreflightOutcome =
+  | {
+      ok: true;
+      replacementText: string;
+      state: DocumentThreadState;
+    }
+  | {
+      ok: false;
+      state: DocumentThreadState;
+      reason: 'SUGGESTION_NOT_FOUND' | 'SUGGESTION_NOT_PROPOSED' | 'HASH_MISMATCH';
+    };
+
+export const preflightApplyThreadSuggestion = (
+  state: DocumentThreadState,
+  threadId: string,
+  suggestionId: string,
+  beforeText: string,
+  config: Config,
+): ApplySuggestionPreflightOutcome => {
+  const currentRevision = revisionTokenForPath(state.sidecarPath);
+  if (!sameRevision(currentRevision, state.revisionToken)) {
+    throw new SidecarConflictError('sidecar changed on disk; reload sidecar then retry your action');
+  }
+
+  const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
+  const suggestion = thread?.suggestions?.find((s) => s.suggestion_id === suggestionId);
+  if (!suggestion) {
+    return { ok: false, state, reason: 'SUGGESTION_NOT_FOUND' };
+  }
+  if (suggestion.status !== 'proposed') {
+    return { ok: false, state, reason: 'SUGGESTION_NOT_PROPOSED' };
+  }
+
+  if (hashText(beforeText) !== suggestion.proposed_edit.before_text_hash) {
+    const next = persist({
+      ...state,
+      sidecar: applySuggestion({
+        sidecar: state.sidecar,
+        threadId,
+        suggestionId,
+        actor: authorFromConfig(config),
+        beforeText,
+        now: now(),
+      }),
+    });
+    return { ok: false, state: next, reason: 'HASH_MISMATCH' };
+  }
+
+  return { ok: true, state, replacementText: suggestion.proposed_edit.replacement_text };
 };
 
 export const applyThreadSuggestion = (

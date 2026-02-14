@@ -1,14 +1,19 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import {
   SidecarConflictError,
+  __testOnlyRelevanceCacheSize,
   addComment,
   emptySidecarForDocument,
   loadStateForDocument,
+  preflightApplyThreadSuggestion,
+  proposeThreadSuggestion,
   reanchorAll,
   reloadState,
+  invalidateRelevanceCache,
   type Config,
 } from '../../vscode-extension/src/model.js';
 
@@ -110,6 +115,57 @@ describe('vscode-extension model sidecar lifecycle', () => {
 
     const reloaded = reloadState(second);
     expect(reloaded.sidecar.threads).toHaveLength(2);
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('preflight apply marks suggestion obsolete on hash mismatch before document mutation step', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'md-collab-ext-'));
+    const docPath = join(dir, 'doc.md');
+    writeFileSync(docPath, '# title\nhello\n', 'utf8');
+
+    const withThread = addComment(loadStateForDocument(docPath), '# title\nhello\n', 8, 13, 'comment', config);
+    const thread = withThread.sidecar.threads[0];
+    const withSuggestion = proposeThreadSuggestion(withThread, thread.thread_id, thread.anchor, 'hello', 'HELLO', config);
+    const suggestionId = withSuggestion.sidecar.threads[0].suggestions?.[0].suggestion_id;
+    expect(suggestionId).toBeTruthy();
+
+    const preflight = preflightApplyThreadSuggestion(withSuggestion, thread.thread_id, suggestionId!, 'goodbye', config);
+    expect(preflight.ok).toBe(false);
+    if (!preflight.ok) {
+      expect(preflight.reason).toBe('HASH_MISMATCH');
+      expect(preflight.state.sidecar.threads[0].suggestions?.[0].status).toBe('obsolete');
+      expect(preflight.state.sidecar.threads[0].messages.at(-1)?.body).toContain('obsolete');
+    }
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('explicitly invalidates relevance cache on HEAD changes in git timeline', () => {
+    invalidateRelevanceCache();
+
+    const dir = mkdtempSync(join(tmpdir(), 'md-collab-ext-'));
+    const docPath = join(dir, 'doc.md');
+    writeFileSync(docPath, '# title\nhello\n', 'utf8');
+
+    execSync('git init', { cwd: dir });
+    execSync('git config user.email "test@example.com"', { cwd: dir });
+    execSync('git config user.name "Test User"', { cwd: dir });
+    execSync('git add doc.md', { cwd: dir });
+    execSync('git commit -m "initial"', { cwd: dir });
+
+    const gitConfig: Config = { ...config, timelineKind: 'git' };
+    const first = addComment(loadStateForDocument(docPath), '# title\nhello\n', 8, 13, 'comment', config);
+    const reloaded1 = reloadState(first, gitConfig);
+    const cacheAfterFirstEval = __testOnlyRelevanceCacheSize();
+
+    writeFileSync(docPath, '# title\nhello world\n', 'utf8');
+    execSync('git add doc.md', { cwd: dir });
+    execSync('git commit -m "head-change"', { cwd: dir });
+
+    const reloaded2 = reloadState(reloaded1, gitConfig);
+    expect(reloaded2.sidecar.threads.length).toBe(1);
+    expect(__testOnlyRelevanceCacheSize()).toBe(cacheAfterFirstEval);
 
     rmSync(dir, { recursive: true, force: true });
   });

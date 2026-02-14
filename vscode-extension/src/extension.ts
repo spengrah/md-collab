@@ -12,6 +12,7 @@ import {
   visibleInlineThreads,
   timelineBadge,
   proposeThreadSuggestion,
+  preflightApplyThreadSuggestion,
   applyThreadSuggestion,
   rejectThreadSuggestion,
   getSuggestionBaseVersion,
@@ -534,14 +535,24 @@ export function activate(context: vscode.ExtensionContext) {
       const beforeText = editor.document.getText(range);
 
       try {
+        const preflight = preflightApplyThreadSuggestion(state, threadId, suggestionId, beforeText, config);
+        if (!preflight.ok) {
+          if (preflight.reason === 'HASH_MISMATCH') {
+            stateByDocument.set(editor.document.uri.toString(), preflight.state);
+            refresh();
+            void vscode.window.showWarningMessage('md-collab: Suggestion became obsolete (hash mismatch). No document edits were made.');
+          }
+          return;
+        }
+
         const didEdit = await editor.edit((editBuilder) => {
-          editBuilder.replace(range, suggestion.proposed_edit.replacement_text);
+          editBuilder.replace(range, preflight.replacementText);
         });
         if (!didEdit) {
           void vscode.window.showWarningMessage('md-collab: Apply suggestion canceled before document mutation.');
           return;
         }
-        const next = applyThreadSuggestion(state, threadId, suggestionId, beforeText, config);
+        const next = applyThreadSuggestion(preflight.state, threadId, suggestionId, beforeText, config);
         stateByDocument.set(editor.document.uri.toString(), next);
         refresh();
       } catch (err) {
