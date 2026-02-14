@@ -1,0 +1,141 @@
+diff --git a/lapce-app/src/editor/view.rs b/lapce-app/src/editor/view.rs
+index 5a119e0..fc3b1ca 100644
+--- a/lapce-app/src/editor/view.rs
++++ b/lapce-app/src/editor/view.rs
+@@ -61,6 +61,7 @@
+     debug::{DapData, LapceBreakpoint},
+     doc::DocContent,
+     editor::gutter::FoldingDisplayItem,
++    panel::kind::PanelKind,
+     text_input::TextInputBuilder,
+     window_tab::{CommonData, Focus, WindowTabData},
+     workspace::LapceWorkspace,
+@@ -1333,6 +1334,7 @@ pub fn editor_container_view(
+                         |s| s.hide(),
+                     )
+             }),
++            thread_inline_affordance(window_tab_data.clone(), editor),
+             find_view(
+                 editor,
+                 find_editor,
+@@ -1375,6 +1377,39 @@ pub fn editor_container_view(
+     .debug_name("Editor Container")
+ }
+ 
++
++fn thread_inline_affordance(
++    window_tab_data: Rc<WindowTabData>,
++    editor: RwSignal<EditorData>,
++) -> impl View {
++    let config = window_tab_data.common.config;
++    label(|| "💬 Thread t-1".to_string())
++        .on_click_stop(move |_| {
++            window_tab_data.panel.show_panel(&PanelKind::Thread);
++            window_tab_data.common.focus.set(Focus::Panel(PanelKind::Thread));
++            let editor = editor.get_untracked();
++            if let Some(editor_tab_id) = editor.editor_tab_id.get_untracked() {
++                window_tab_data
++                    .common
++                    .internal_command
++                    .send(InternalCommand::FocusEditorTab { editor_tab_id });
++            }
++        })
++        .style(move |s| {
++            let config = config.get();
++            let line_height = config.editor.line_height() as f32;
++            s.absolute()
++                .margin_left(48.0)
++                .margin_top(line_height * 2.0)
++                .padding_horiz(6.0)
++                .height(line_height - 4.0)
++                .border_radius(4.0)
++                .cursor(CursorStyle::Pointer)
++                .background(config.color(LapceColor::PANEL_HOVERED_BACKGROUND))
++                .color(config.color(LapceColor::EDITOR_FOREGROUND))
++        })
++}
++
+ fn editor_gutter_breakpoint_view(
+     i: usize,
+     doc: DocSignal,
+diff --git a/lapce-app/src/panel/data.rs b/lapce-app/src/panel/data.rs
+index b18f06d..90a40b9 100644
+--- a/lapce-app/src/panel/data.rs
++++ b/lapce-app/src/panel/data.rs
+@@ -44,7 +44,7 @@ pub fn default_panel_order() -> PanelOrder {
+     );
+     order.insert(
+         PanelPosition::RightTop,
+-        im::vector![PanelKind::DocumentSymbol,],
++        im::vector![PanelKind::DocumentSymbol, PanelKind::Thread,],
+     );
+ 
+     order
+diff --git a/lapce-app/src/panel/kind.rs b/lapce-app/src/panel/kind.rs
+index 695990e..97fb8a4 100644
+--- a/lapce-app/src/panel/kind.rs
++++ b/lapce-app/src/panel/kind.rs
+@@ -19,6 +19,7 @@ pub enum PanelKind {
+     DocumentSymbol,
+     References,
+     Implementation,
++    Thread,
+ }
+ 
+ impl PanelKind {
+@@ -35,6 +36,7 @@ pub fn svg_name(&self) -> &'static str {
+             PanelKind::DocumentSymbol => LapceIcons::DOCUMENT_SYMBOL,
+             PanelKind::References => LapceIcons::REFERENCES,
+             PanelKind::Implementation => LapceIcons::IMPLEMENTATION,
++            PanelKind::Thread => LapceIcons::REFERENCES,
+         }
+     }
+ 
+@@ -61,6 +63,7 @@ pub fn default_position(&self) -> PanelPosition {
+             PanelKind::DocumentSymbol => PanelPosition::RightTop,
+             PanelKind::References => PanelPosition::BottomLeft,
+             PanelKind::Implementation => PanelPosition::BottomLeft,
++            PanelKind::Thread => PanelPosition::RightTop,
+         }
+     }
+ }
+diff --git a/lapce-app/src/panel/mod.rs b/lapce-app/src/panel/mod.rs
+index 016192e..1420a96 100644
+--- a/lapce-app/src/panel/mod.rs
++++ b/lapce-app/src/panel/mod.rs
+@@ -12,4 +12,5 @@
+ pub mod source_control_view;
+ pub mod style;
+ pub mod terminal_view;
++pub mod thread_view;
+ pub mod view;
+diff --git a/lapce-app/src/panel/view.rs b/lapce-app/src/panel/view.rs
+index d9a9b0d..c244ab2 100644
+--- a/lapce-app/src/panel/view.rs
++++ b/lapce-app/src/panel/view.rs
+@@ -25,6 +25,7 @@
+     problem_view::problem_panel,
+     source_control_view::source_control_panel,
+     terminal_view::terminal_panel,
++    thread_view::thread_panel,
+ };
+ use crate::{
+     app::{clickable_icon, clickable_icon_base},
+@@ -507,6 +508,9 @@ fn panel_view(
+                     implementation_panel(window_tab_data.clone(), position)
+                         .into_any()
+                 }
++                PanelKind::Thread => {
++                    thread_panel(window_tab_data.clone(), position).into_any()
++                }
+             };
+             view.style(|s| s.size_pct(100.0, 100.0))
+         },
+@@ -563,6 +567,7 @@ fn panel_picker(
+                 PanelKind::DocumentSymbol => "Document Symbol",
+                 PanelKind::References => "References",
+                 PanelKind::Implementation => "Implementation",
++                PanelKind::Thread => "Threads (Spike)",
+             };
+             let icon = p.svg_name();
+             let is_active = {
