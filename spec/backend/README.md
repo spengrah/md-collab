@@ -16,6 +16,7 @@ Core backend scope:
 - `spec-for-backend-implementation-plan-tdd.md`
 - `spec-for-author-identity.md`
 - `spec-for-review-state-and-versioning.md`
+- `spec-for-sidecar-permission-parity.md`
 
 ## Traceability + assurance structure
 - `requirements-index.md`
@@ -30,6 +31,7 @@ Core backend scope:
 - `../../guidance/backend/guidance-for-backend-implementation-plan-tdd.md`
 - `../../guidance/backend/guidance-for-author-identity.md`
 - `../../guidance/backend/guidance-for-review-state-and-versioning.md`
+- `../../guidance/backend/guidance-for-sidecar-permission-parity.md`
 
 ## Archived docs
 - `archive/v0.2/spec-for-git-review-thread-model.md`

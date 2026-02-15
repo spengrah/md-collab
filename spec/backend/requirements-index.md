@@ -18,6 +18,9 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 - **MDC-BE-012**: Backend behavior is test-driven and regression-guarded.
 - **MDC-BE-013**: v0.1 known limitation on concurrent logical write conflicts is explicitly documented.
 - **MDC-BE-014**: v0.1 enforces runtime author payload validation on all mutation operations (`author_id`, `author_label`, `verified` present/valid). Full identity resolution-order behavior is deferred.
+- **MDC-BE-015**: Review-state/version-context fields remain backward compatible and relevance-state transitions stay deterministic.
+- **MDC-BE-016**: Sidecar create/rewrite normalizes POSIX permission parity to paired markdown file mode/group on final path.
+- **MDC-BE-017**: Owner parity is attempted best-effort; EPERM paths are explicit/logged and do not silently drift.
 
 ## Mapping
 
@@ -30,3 +33,4 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 | MDC-BE-012 | `spec-for-backend-implementation-plan-tdd.md` | CI test plan + changelog gate |
 | MDC-BE-014 | `spec-for-author-identity.md` | runtime author validation tests across all mutation ops |
 | MDC-BE-015 | `spec-for-review-state-and-versioning.md` | version-context field compatibility + relevance-state determinism tests |
+| MDC-BE-016..017 | `spec-for-sidecar-permission-parity.md` | permission parity create/rewrite tests + EPERM warning-path tests |
