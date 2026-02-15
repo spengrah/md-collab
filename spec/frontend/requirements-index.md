@@ -11,3 +11,5 @@ Purpose: stable requirement IDs for PR-review-style interaction model and compos
 | MDC-FE-005 | `pr-review-ux-implementation-checklist.md` | local + Remote-SSH acceptance runs |
 | MDC-FE-006 | `../review-system-composition-map.md` | no direct-write bypass; command-path audit |
 | MDC-FE-007 | `spec-for-ux-benchmark-comparison.md` | benchmark gap artifact maintenance checks |
+| MDC-FE-008 | `spec-for-thread-panel-chat-webview.md` | webview chat-bubble layout + thread grouping acceptance checks |
+| MDC-FE-009 | `spec-for-thread-panel-chat-webview.md` | webview intent->canonical command routing tests (no direct-write bypass) |
