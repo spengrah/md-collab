@@ -10,6 +10,14 @@ Treat overlay UX and suggestion flow as one coherent review interaction surface.
 4. Prefer safe default on hash mismatch (`obsolete`, no write).
 5. Show timeline provenance chips (`local draft|git|hybrid`) consistently.
 6. Keep status chips compact but always explainable via tooltip/detail.
+7. Implement suggestion UX as **selection-first**:
+   - if invoked from editor context with a selection and no thread arg, auto-create thread first,
+   - then create suggestion against the selected text,
+   - if invoked from thread context, reuse that thread.
+8. Keep highlight semantics conservative:
+   - range fill for `high|medium` only,
+   - `low|broken` should rely on marker + tooltip + relink cues.
+9. Conflict and base-version failure states must provide actionable recovery links/buttons (reload sidecar, conflict help, settings/help).
 
 ## Anti-patterns
 1. Duplicate write logic in overlay click handlers.

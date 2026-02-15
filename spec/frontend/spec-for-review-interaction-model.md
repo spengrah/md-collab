@@ -8,6 +8,9 @@ Define a single interaction contract for on-document overlays, thread actions, a
 
 ## 2. Overlay stack (required)
 1. **Range highlight layer**: highlight anchor ranges for open threads by relevance/status.
+   - `high` + `medium` confidence anchors: render range highlight.
+   - `low` confidence anchors: no range fill (marker/tooltip only) to avoid false precision.
+   - `broken` anchors: no range fill; show explicit relink/reanchor affordance.
 2. **Inline signal layer**: end-of-line/inlay/CodeLens chips showing:
    - thread count
    - relevance badge (`active/outdated/orphaned`)
@@ -53,6 +56,10 @@ Each suggestion must include:
 2. Hover shows concise thread summary (author, last message, relevance, timeline, suggestion status if present).
 3. Thread/suggestion actions must not bypass sidecar conflict guards.
 4. When Git metadata is absent, UI must still provide full local-draft interaction flow with workspace timeline labels.
+5. **Selection-first suggestion flow is required**:
+   - user can run `mdCollab.proposeSuggestion` from any markdown selection,
+   - if no thread context is provided, implementation auto-creates a thread anchored to the selected range,
+   - then suggestion proposal is attached to that new thread.
 
 ## 6. Apply/reject semantics
 1. Apply must verify:
