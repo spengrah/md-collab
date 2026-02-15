@@ -13,30 +13,42 @@ const defaultParityLogger = {
 };
 const chmodMask = 0o777;
 const normalizeModeBits = (mode) => mode & chmodMask;
+const errnoOf = (err) => (err && typeof err === 'object' && 'code' in err ? String(err.code) : 'UNKNOWN');
 const warnParity = (warnings, logger, operation, sidecarPath, reason) => {
     const message = `[md-collab][permissions] sidecar parity warning op=${operation} path=${sidecarPath} reason=${reason}`;
     warnings.push(message);
     logger.warn(message);
+};
+const expectedCollaboratorUsable = (targetMode, finalMode, groupParity) => {
+    const requiredGroupBits = targetMode & 0o070;
+    const requiredOtherBits = targetMode & 0o007;
+    const groupUsable = requiredGroupBits === 0 || (groupParity && (finalMode & requiredGroupBits) === requiredGroupBits);
+    const otherUsable = (finalMode & requiredOtherBits) === requiredOtherBits;
+    return groupUsable && otherUsable;
 };
 export const ensureSidecarPermissionParity = (docPath, sidecarPath, context = {}, fsOps = defaultParityFs, logger = defaultParityLogger) => {
     const operation = context.operation ?? 'unknown';
     const warnings = [];
     const docStat = fsOps.statSync(docPath);
     const targetMode = normalizeModeBits(docStat.mode);
-    fsOps.chmodSync(sidecarPath, targetMode);
+    try {
+        fsOps.chmodSync(sidecarPath, targetMode);
+    }
+    catch (err) {
+        warnParity(warnings, logger, operation, sidecarPath, `mode-normalization-failed errno=${errnoOf(err)}`);
+    }
     try {
         const sidecarStatAfterMode = fsOps.statSync(sidecarPath);
         fsOps.chownSync(sidecarPath, sidecarStatAfterMode.uid, docStat.gid);
     }
     catch (err) {
-        const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : 'UNKNOWN';
-        warnParity(warnings, logger, operation, sidecarPath, `group-parity-failed errno=${code}`);
+        warnParity(warnings, logger, operation, sidecarPath, `group-parity-failed errno=${errnoOf(err)}`);
     }
     try {
         fsOps.chownSync(sidecarPath, docStat.uid, docStat.gid);
     }
     catch (err) {
-        const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : 'UNKNOWN';
+        const code = errnoOf(err);
         if (code === 'EPERM') {
             warnParity(warnings, logger, operation, sidecarPath, 'owner-parity-blocked errno=EPERM');
         }
@@ -46,8 +58,17 @@ export const ensureSidecarPermissionParity = (docPath, sidecarPath, context = {}
     }
     const sidecarStat = fsOps.statSync(sidecarPath);
     const sidecarMode = normalizeModeBits(sidecarStat.mode);
+    const groupParity = sidecarStat.gid === docStat.gid;
     if (sidecarMode !== targetMode) {
-        return { ok: false, warnings: [...warnings, `mode-mismatch expected=${targetMode.toString(8)} actual=${sidecarMode.toString(8)}`] };
+        warnParity(warnings, logger, operation, sidecarPath, `mode-mismatch expected=${targetMode.toString(8)} actual=${sidecarMode.toString(8)}`);
+    }
+    if (!groupParity) {
+        warnParity(warnings, logger, operation, sidecarPath, `group-mismatch expected=${docStat.gid} actual=${sidecarStat.gid}`);
+    }
+    const usable = expectedCollaboratorUsable(targetMode, sidecarMode, groupParity);
+    if (!usable) {
+        warnParity(warnings, logger, operation, sidecarPath, 'sidecar-unusable-for-expected-collaborators');
+        return { ok: false, warnings };
     }
     return { ok: true, warnings };
 };

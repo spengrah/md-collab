@@ -79,4 +79,102 @@ describe('sidecar atomic writes', () => {
     expect(result.ok).toBe(true);
     expect(warnings.some((w) => w.includes('owner-parity-blocked errno=EPERM'))).toBe(true);
   });
+
+  it('returns ok when group parity fails but collaborators remain usable', () => {
+    const warnings: string[] = [];
+    const logger = { warn: (message: string) => warnings.push(message) };
+
+    const fsOps = {
+      statSync: vi.fn()
+        .mockReturnValueOnce({ uid: 123, gid: 456, mode: 0o100604 })
+        .mockReturnValueOnce({ uid: 123, gid: 777, mode: 0o100604 })
+        .mockReturnValueOnce({ uid: 123, gid: 777, mode: 0o100604 }),
+      chmodSync: vi.fn(),
+      chownSync: vi.fn()
+        .mockImplementationOnce(() => {
+          const err = new Error('operation not permitted') as Error & { code: string };
+          err.code = 'EPERM';
+          throw err;
+        })
+        .mockImplementationOnce(() => undefined),
+    };
+
+    const result = ensureSidecarPermissionParity('/tmp/doc.md', '/tmp/doc.comments.json', { operation: 'create' }, fsOps, logger);
+
+    expect(result.ok).toBe(true);
+    expect(warnings.some((w) => w.includes('group-parity-failed errno=EPERM'))).toBe(true);
+    expect(warnings.some((w) => w.includes('group-mismatch expected=456 actual=777'))).toBe(true);
+  });
+
+  it('returns !ok when group parity failure makes collaborator access unusable', () => {
+    const warnings: string[] = [];
+    const logger = { warn: (message: string) => warnings.push(message) };
+
+    const fsOps = {
+      statSync: vi.fn()
+        .mockReturnValueOnce({ uid: 123, gid: 456, mode: 0o100640 })
+        .mockReturnValueOnce({ uid: 123, gid: 777, mode: 0o100640 })
+        .mockReturnValueOnce({ uid: 123, gid: 777, mode: 0o100640 }),
+      chmodSync: vi.fn(),
+      chownSync: vi.fn()
+        .mockImplementationOnce(() => {
+          const err = new Error('operation not permitted') as Error & { code: string };
+          err.code = 'EPERM';
+          throw err;
+        })
+        .mockImplementationOnce(() => undefined),
+    };
+
+    const result = ensureSidecarPermissionParity('/tmp/doc.md', '/tmp/doc.comments.json', { operation: 'rewrite' }, fsOps, logger);
+
+    expect(result.ok).toBe(false);
+    expect(warnings.some((w) => w.includes('sidecar-unusable-for-expected-collaborators'))).toBe(true);
+  });
+
+  it('returns ok when chmod fails but final permissions remain usable', () => {
+    const warnings: string[] = [];
+    const logger = { warn: (message: string) => warnings.push(message) };
+
+    const fsOps = {
+      statSync: vi.fn()
+        .mockReturnValueOnce({ uid: 123, gid: 456, mode: 0o100600 })
+        .mockReturnValueOnce({ uid: 123, gid: 456, mode: 0o100600 })
+        .mockReturnValueOnce({ uid: 123, gid: 456, mode: 0o100600 }),
+      chmodSync: vi.fn().mockImplementationOnce(() => {
+        const err = new Error('operation not permitted') as Error & { code: string };
+        err.code = 'EPERM';
+        throw err;
+      }),
+      chownSync: vi.fn().mockImplementation(() => undefined),
+    };
+
+    const result = ensureSidecarPermissionParity('/tmp/doc.md', '/tmp/doc.comments.json', { operation: 'rewrite' }, fsOps, logger);
+
+    expect(result.ok).toBe(true);
+    expect(warnings.some((w) => w.includes('mode-normalization-failed errno=EPERM'))).toBe(true);
+  });
+
+  it('returns !ok when chmod failure leaves collaborator permissions unusable', () => {
+    const warnings: string[] = [];
+    const logger = { warn: (message: string) => warnings.push(message) };
+
+    const fsOps = {
+      statSync: vi.fn()
+        .mockReturnValueOnce({ uid: 123, gid: 456, mode: 0o100640 })
+        .mockReturnValueOnce({ uid: 123, gid: 456, mode: 0o100600 })
+        .mockReturnValueOnce({ uid: 123, gid: 456, mode: 0o100600 }),
+      chmodSync: vi.fn().mockImplementationOnce(() => {
+        const err = new Error('operation not permitted') as Error & { code: string };
+        err.code = 'EPERM';
+        throw err;
+      }),
+      chownSync: vi.fn().mockImplementation(() => undefined),
+    };
+
+    const result = ensureSidecarPermissionParity('/tmp/doc.md', '/tmp/doc.comments.json', { operation: 'rewrite' }, fsOps, logger);
+
+    expect(result.ok).toBe(false);
+    expect(warnings.some((w) => w.includes('mode-mismatch expected=640 actual=600'))).toBe(true);
+    expect(warnings.some((w) => w.includes('sidecar-unusable-for-expected-collaborators'))).toBe(true);
+  });
 });
