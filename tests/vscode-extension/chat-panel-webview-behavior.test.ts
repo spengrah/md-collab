@@ -61,5 +61,8 @@ describe('chat panel webview behavior', () => {
     expect(__testOnlyClientScript).toContain('Suggestion status');
     expect(__testOnlyClientScript).toContain('Add comment from selection');
     expect(__testOnlyClientScript).toContain("window.prompt('Reply text')");
+    expect(__testOnlyClientScript).toContain("Thread panel failed to render. Try reloading the window.");
+    expect(__testOnlyClientScript).toContain("window.addEventListener('error'");
+    expect(__testOnlyClientScript).toContain("window.addEventListener('unhandledrejection'");
   });
 });

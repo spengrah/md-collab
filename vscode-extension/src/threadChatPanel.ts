@@ -96,6 +96,20 @@ const isSetFiltersMessage = (message: unknown): message is WebviewSetFiltersMess
 
 const serialize = (value: unknown) => JSON.stringify(value);
 
+const buildIntentDispatchArgs = (message: WebviewIntentMessage): unknown[] => {
+  if (message.intent === 'addComment') {
+    return message.body ? [{ body: message.body }] : [];
+  }
+  if (message.intent === 'reply') {
+    return [{ threadId: message.threadId, body: message.body }];
+  }
+
+  const args: unknown[] = [];
+  if (message.threadId) args.push(message.threadId);
+  if (message.suggestionId) args.push(message.suggestionId);
+  return args;
+};
+
 const computeThreadPatch = (previous: ChatPanelViewModel | undefined, next: ChatPanelViewModel | undefined): ThreadPatchPayload | undefined => {
   if (!previous || !next) return undefined;
   if (serialize(previous.ui.filters) !== serialize(next.ui.filters)) return undefined;
@@ -131,6 +145,21 @@ const el = (tag, className, text) => {
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+};
+
+const replaceLoadingWithError = (message) => {
+  if (!root) return;
+  root.className = 'empty';
+  root.textContent = message;
+};
+
+const guard = (fn, fallbackMessage) => {
+  try {
+    fn();
+  } catch (error) {
+    console.error('[md-collab.threadChat] webview error', error);
+    replaceLoadingWithError(fallbackMessage);
+  }
 };
 
 const postIntent = (intent, threadId, suggestionId, body) => vscode.postMessage({ type: 'intent', intent, threadId, suggestionId, body });
@@ -333,14 +362,24 @@ const patchThread = (groupName, threadId, thread) => {
 };
 
 window.addEventListener('message', (event) => {
-  if (!event.data || event.data.type !== 'render') return;
-  renderBanner(event.data.banner);
-  if (event.data.mode === 'patchThread' && vm) {
-    patchThread(event.data.group, event.data.threadId, event.data.thread);
-    return;
-  }
-  vm = event.data.vm;
-  render();
+  guard(() => {
+    if (!event.data || event.data.type !== 'render') return;
+    renderBanner(event.data.banner);
+    if (event.data.mode === 'patchThread' && vm) {
+      patchThread(event.data.group, event.data.threadId, event.data.thread);
+      return;
+    }
+    vm = event.data.vm;
+    render();
+  }, 'Thread panel failed to render. Try reloading the window.');
+});
+
+window.addEventListener('error', () => {
+  replaceLoadingWithError('Thread panel failed to initialize. Try reloading the window.');
+});
+
+window.addEventListener('unhandledrejection', () => {
+  replaceLoadingWithError('Thread panel failed to initialize. Try reloading the window.');
 });
 `;
 
@@ -430,15 +469,7 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
       if (!isIntent(message)) return;
       this.banner = undefined;
       const command = chatIntentToCommand[message.intent];
-      const args: unknown[] = [];
-      if (message.intent === 'addComment') {
-        if (message.body) args.push({ body: message.body });
-      } else if (message.intent === 'reply') {
-        args.push({ threadId: message.threadId, body: message.body });
-      } else {
-        if (message.threadId) args.push(message.threadId);
-        if (message.suggestionId) args.push(message.suggestionId);
-      }
+      const args = buildIntentDispatchArgs(message);
       try {
         await this.dispatch(command, ...args);
       } catch (err) {
@@ -494,3 +525,4 @@ export const buildThreadChatPanelViewModel = (
 
 export const __testOnlyComputeThreadPatch = computeThreadPatch;
 export const __testOnlyClientScript = clientScript;
+export const __testOnlyBuildIntentDispatchArgs = buildIntentDispatchArgs;

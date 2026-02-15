@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chatIntentToCommand } from '../../vscode-extension/src/threadChatPanel.js';
+import { __testOnlyBuildIntentDispatchArgs, chatIntentToCommand } from '../../vscode-extension/src/threadChatPanel.js';
 
 describe('chat intent command routing', () => {
   it('maps webview intents to canonical extension commands', () => {
@@ -15,5 +15,17 @@ describe('chat intent command routing', () => {
     expect(chatIntentToCommand.jumpToAnchor).toBe('mdCollab.navigateToThread');
     expect(chatIntentToCommand.relinkAnchor).toBe('mdCollab.reanchorCurrentFile');
     expect(chatIntentToCommand.reloadSidecar).toBe('mdCollab.reloadSidecar');
+  });
+
+  it('builds dispatch args for intents without bypassing command routing', () => {
+    expect(__testOnlyBuildIntentDispatchArgs({ type: 'intent', intent: 'addComment', body: 'x' })).toEqual([{ body: 'x' }]);
+    expect(__testOnlyBuildIntentDispatchArgs({ type: 'intent', intent: 'reply', threadId: 't1', body: 'x' })).toEqual([
+      { threadId: 't1', body: 'x' },
+    ]);
+    expect(__testOnlyBuildIntentDispatchArgs({ type: 'intent', intent: 'applySuggestion', threadId: 't1', suggestionId: 's1' })).toEqual([
+      't1',
+      's1',
+    ]);
+    expect(__testOnlyBuildIntentDispatchArgs({ type: 'intent', intent: 'reloadSidecar' })).toEqual([]);
   });
 });
