@@ -2,7 +2,7 @@
   "name": "md-collab-vscode",
   "displayName": "md-collab",
   "description": "Inline Markdown collaboration sidecar UI",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "md-collab",
   "type": "module",
   "engines": {
@@ -29,6 +29,7 @@
     "onCommand:mdCollab.showConflictHelp",
     "onCommand:mdCollab.showBaseVersionHelp",
     "onCommand:mdCollab.proposeSuggestion",
+    "onCommand:mdCollab.proposeSuggestionFromSelection",
     "onCommand:mdCollab.applySuggestion",
     "onCommand:mdCollab.rejectSuggestion",
     "onCommand:mdCollab.viewSuggestionBaseVersion"
@@ -48,6 +49,7 @@
       { "command": "mdCollab.showConflictHelp", "title": "md-collab: Conflict Help" },
       { "command": "mdCollab.showBaseVersionHelp", "title": "md-collab: Base Version Help" },
       { "command": "mdCollab.proposeSuggestion", "title": "md-collab: Propose Suggestion" },
+      { "command": "mdCollab.proposeSuggestionFromSelection", "title": "md-collab: Propose Suggestion from Selection (Auto-create Thread)" },
       { "command": "mdCollab.applySuggestion", "title": "md-collab: Apply Suggestion" },
       { "command": "mdCollab.rejectSuggestion", "title": "md-collab: Reject Suggestion" },
       { "command": "mdCollab.viewSuggestionBaseVersion", "title": "md-collab: View Suggestion Base Version" }
@@ -60,7 +62,7 @@
           "group": "navigation@50"
         },
         {
-          "command": "mdCollab.proposeSuggestion",
+          "command": "mdCollab.proposeSuggestionFromSelection",
           "when": "editorTextFocus && editorHasSelection && resourceExtname == .md",
           "group": "navigation@51"
         }

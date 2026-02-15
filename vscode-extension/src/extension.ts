@@ -552,6 +552,10 @@ export function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
     }),
 
+    vscode.commands.registerCommand('mdCollab.proposeSuggestionFromSelection', async () => {
+      await vscode.commands.executeCommand('mdCollab.proposeSuggestion');
+    }),
+
     vscode.commands.registerCommand('mdCollab.proposeSuggestion', async (argThreadId?: unknown) => {
       const editor = vscode.window.activeTextEditor;
       const state = loadForEditor(editor);

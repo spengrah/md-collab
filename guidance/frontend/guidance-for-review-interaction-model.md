@@ -18,6 +18,7 @@ Treat overlay UX and suggestion flow as one coherent review interaction surface.
    - range fill for `high|medium` only,
    - `low|broken` should rely on marker + tooltip + relink cues.
 9. Conflict and base-version failure states must provide actionable recovery links/buttons (reload sidecar, conflict help, settings/help).
+10. Prefer panel readability over dense horizontal rows: render message history in a vertical, chat-like layout with clear author/time header and fuller body preview.
 
 ## Anti-patterns
 1. Duplicate write logic in overlay click handlers.

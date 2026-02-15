@@ -42,11 +42,24 @@ export class ThreadItem extends vscode.TreeItem {
 }
 
 class MessageItem extends vscode.TreeItem {
-  constructor(label: string, body: string) {
-    super(label, vscode.TreeItemCollapsibleState.None);
-    this.description = body.replace(/\s+/g, ' ').slice(0, 80);
+  constructor(
+    public readonly body: string,
+    public readonly authorLabel: string,
+    public readonly createdAt: string,
+  ) {
+    super(`${authorLabel} · ${new Date(createdAt).toLocaleString()}`, vscode.TreeItemCollapsibleState.Expanded);
+    this.description = body.replace(/\s+/g, ' ').slice(0, 140);
     this.tooltip = body;
     this.contextValue = 'mdCollab.message';
+    this.iconPath = new vscode.ThemeIcon('comment-discussion');
+  }
+}
+
+class MessageBodyItem extends vscode.TreeItem {
+  constructor(body: string) {
+    super(body.replace(/\s+/g, ' ').slice(0, 280), vscode.TreeItemCollapsibleState.None);
+    this.contextValue = 'mdCollab.message.body';
+    this.tooltip = body;
     this.iconPath = new vscode.ThemeIcon('comment');
   }
 }
@@ -155,10 +168,9 @@ export class ThreadTreeProvider implements vscode.TreeDataProvider<vscode.TreeIt
       if (!thread) return [];
 
       const orderedMessages = [...thread.messages].sort((a, b) => a.created_at.localeCompare(b.created_at));
-      const messageItems = orderedMessages.map((message) => {
-        const timestamp = new Date(message.created_at).toLocaleString();
-        return new MessageItem(`${message.author.author_label} · ${timestamp}`, message.body);
-      });
+      const messageItems = orderedMessages.map(
+        (message) => new MessageItem(message.body, message.author.author_label, message.created_at),
+      );
 
       const actionItems: vscode.TreeItem[] = [
         new ReplyActionItem(thread.thread_id),
@@ -176,7 +188,11 @@ export class ThreadTreeProvider implements vscode.TreeDataProvider<vscode.TreeIt
           ),
       );
 
-      return [...messageItems, ...actionItems, ...suggestionItems];
+      return [...actionItems, ...messageItems, ...suggestionItems];
+    }
+
+    if (element instanceof MessageItem) {
+      return [new MessageBodyItem(element.body)];
     }
 
     if (element instanceof SuggestionItem) {

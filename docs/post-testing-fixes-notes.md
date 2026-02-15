@@ -19,3 +19,10 @@
 
 - Expected: concurrent/multi-process sidecar writes, git operations touching sidecars, manual sidecar edits.
 - Not expected: single editor window with only md-collab writing sidecar.
+
+## Panel + suggestion discoverability updates
+
+- Inline `active · local draft` status chip was removed from editor line decoration (status remains in hover/panel context).
+- Added dedicated command: `md-collab: Propose Suggestion from Selection (Auto-create Thread)`.
+- Thread panel now surfaces action items before message history for faster access (`Reply`, `Resolve/Reopen`, `Suggest edit`).
+- Thread messages are now rendered in a more vertical, chat-like structure (header + expanded body item) to show more content in-panel.
