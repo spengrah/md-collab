@@ -32,27 +32,80 @@
     "onCommand:mdCollab.proposeSuggestionFromSelection",
     "onCommand:mdCollab.applySuggestion",
     "onCommand:mdCollab.rejectSuggestion",
-    "onCommand:mdCollab.viewSuggestionBaseVersion"
+    "onCommand:mdCollab.viewSuggestionBaseVersion",
+    "onCommand:mdCollab.openLegacyThreadPanel"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      { "command": "mdCollab.addComment", "title": "md-collab: Add Comment" },
-      { "command": "mdCollab.replyToThread", "title": "md-collab: Reply to Thread" },
-      { "command": "mdCollab.navigateToThread", "title": "md-collab: Jump to Thread Anchor" },
-      { "command": "mdCollab.resolveThread", "title": "md-collab: Resolve Thread" },
-      { "command": "mdCollab.reopenThread", "title": "md-collab: Reopen Thread" },
-      { "command": "mdCollab.reanchorCurrentFile", "title": "md-collab: Reanchor Current File" },
-      { "command": "mdCollab.reloadSidecar", "title": "md-collab: Reload Sidecar" },
-      { "command": "mdCollab.openThreadPanel", "title": "md-collab: Open Thread Panel" },
-      { "command": "mdCollab.openSidecarForRepair", "title": "md-collab: Open Sidecar for Repair" },
-      { "command": "mdCollab.showConflictHelp", "title": "md-collab: Conflict Help" },
-      { "command": "mdCollab.showBaseVersionHelp", "title": "md-collab: Base Version Help" },
-      { "command": "mdCollab.proposeSuggestion", "title": "md-collab: Propose Suggestion" },
-      { "command": "mdCollab.proposeSuggestionFromSelection", "title": "md-collab: Propose Suggestion from Selection (Auto-create Thread)" },
-      { "command": "mdCollab.applySuggestion", "title": "md-collab: Apply Suggestion" },
-      { "command": "mdCollab.rejectSuggestion", "title": "md-collab: Reject Suggestion" },
-      { "command": "mdCollab.viewSuggestionBaseVersion", "title": "md-collab: View Suggestion Base Version" }
+      {
+        "command": "mdCollab.addComment",
+        "title": "md-collab: Add Comment"
+      },
+      {
+        "command": "mdCollab.replyToThread",
+        "title": "md-collab: Reply to Thread"
+      },
+      {
+        "command": "mdCollab.navigateToThread",
+        "title": "md-collab: Jump to Thread Anchor"
+      },
+      {
+        "command": "mdCollab.resolveThread",
+        "title": "md-collab: Resolve Thread"
+      },
+      {
+        "command": "mdCollab.reopenThread",
+        "title": "md-collab: Reopen Thread"
+      },
+      {
+        "command": "mdCollab.reanchorCurrentFile",
+        "title": "md-collab: Reanchor Current File"
+      },
+      {
+        "command": "mdCollab.reloadSidecar",
+        "title": "md-collab: Reload Sidecar"
+      },
+      {
+        "command": "mdCollab.openThreadPanel",
+        "title": "md-collab: Open Thread Panel"
+      },
+      {
+        "command": "mdCollab.openSidecarForRepair",
+        "title": "md-collab: Open Sidecar for Repair"
+      },
+      {
+        "command": "mdCollab.showConflictHelp",
+        "title": "md-collab: Conflict Help"
+      },
+      {
+        "command": "mdCollab.showBaseVersionHelp",
+        "title": "md-collab: Base Version Help"
+      },
+      {
+        "command": "mdCollab.proposeSuggestion",
+        "title": "md-collab: Propose Suggestion"
+      },
+      {
+        "command": "mdCollab.proposeSuggestionFromSelection",
+        "title": "md-collab: Propose Suggestion from Selection (Auto-create Thread)"
+      },
+      {
+        "command": "mdCollab.applySuggestion",
+        "title": "md-collab: Apply Suggestion"
+      },
+      {
+        "command": "mdCollab.rejectSuggestion",
+        "title": "md-collab: Reject Suggestion"
+      },
+      {
+        "command": "mdCollab.viewSuggestionBaseVersion",
+        "title": "md-collab: View Suggestion Base Version"
+      },
+      {
+        "command": "mdCollab.openLegacyThreadPanel",
+        "title": "md-collab: Open Legacy Thread Tree"
+      }
     ],
     "menus": {
       "editor/context": [
@@ -138,7 +191,11 @@
         },
         "mdCollab.timelineKind": {
           "type": "string",
-          "enum": ["workspace", "git", "hybrid"],
+          "enum": [
+            "workspace",
+            "git",
+            "hybrid"
+          ],
           "default": "workspace",
           "description": "Timeline provenance mode for new thread/message version context."
         }
@@ -156,8 +213,12 @@
     "views": {
       "mdCollab": [
         {
-          "id": "mdCollab.threads",
+          "id": "mdCollab.threadChat",
           "name": "Threads"
+        },
+        {
+          "id": "mdCollab.threads",
+          "name": "Threads (Legacy Tree)"
         }
       ]
     }

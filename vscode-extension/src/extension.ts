@@ -20,6 +20,7 @@ import {
   type DocumentThreadState,
 } from './model.js';
 import { ThreadTreeProvider } from './threadTree.js';
+import { THREAD_CHAT_VIEW_ID, ThreadChatPanelProvider } from './threadChatPanel.js';
 import { MdCollabError } from '../vendor/core/index.js';
 
 const stateByDocument = new Map<string, DocumentThreadState>();
@@ -238,6 +239,9 @@ export function activate(context: vscode.ExtensionContext) {
   const threadTree = new ThreadTreeProvider();
   vscode.window.registerTreeDataProvider('mdCollab.threads', threadTree);
 
+  const threadChatPanel = new ThreadChatPanelProvider((command, ...args) => vscode.commands.executeCommand(command, ...args));
+  context.subscriptions.push(vscode.window.registerWebviewViewProvider(THREAD_CHAT_VIEW_ID, threadChatPanel));
+
   const transientNavigateDecoration = vscode.window.createTextEditorDecorationType({
     backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'),
     border: '1px solid',
@@ -293,6 +297,7 @@ export function activate(context: vscode.ExtensionContext) {
       lastActiveMarkdownDocumentKey = editor.document.uri.toString();
     }
     applyDecorations(editor, threadTree, markerDecorationMap, rangeDecorationMap);
+    threadChatPanel.updateState(editor?.document.languageId === 'markdown' ? loadForEditor(editor) : undefined);
   };
 
   const setActiveSidecarWatcher = (editor: vscode.TextEditor | undefined) => {
@@ -499,6 +504,10 @@ export function activate(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand('mdCollab.openThreadPanel', async () => {
+      await vscode.commands.executeCommand(`${THREAD_CHAT_VIEW_ID}.focus`);
+    }),
+
+    vscode.commands.registerCommand('mdCollab.openLegacyThreadPanel', async () => {
       await vscode.commands.executeCommand('mdCollab.threads.focus');
     }),
 

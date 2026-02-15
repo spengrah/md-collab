@@ -6,6 +6,7 @@ Local-first Markdown collaboration for `.md` documents with sidecar comment thre
 - VS Code extension remains the primary frontend.
 - Workspace-first collaboration (pre-commit) is first-class; Git context is optional enrichment (`workspace|git|hybrid`).
 - Suggestion lifecycle, relevance/timeline semantics, and quality automation are implemented and covered by tests.
+- Thread panel now includes a chat-style webview (with legacy tree fallback) for clearer discussion flow and explicit actions.
 
 ## Direction (active)
 1. Canonical content stays in `.md`.
