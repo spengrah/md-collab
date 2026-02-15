@@ -16,6 +16,7 @@
     "ui"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onView:mdCollab.threadChat",
     "onView:mdCollab.threads",
     "onLanguage:markdown",
