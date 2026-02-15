@@ -254,7 +254,7 @@ const persist = (state: DocumentThreadState): DocumentThreadState => {
     throw new SidecarConflictError('sidecar changed on disk; reload sidecar then retry your action');
   }
 
-  writeSidecarFileAtomic(state.sidecarPath, state.sidecar);
+  writeSidecarFileAtomic(state.sidecarPath, state.sidecar, state.documentPath);
   invalidateRelevanceCache(state.documentPath);
   return {
     ...state,

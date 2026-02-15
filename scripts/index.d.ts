@@ -66,9 +66,12 @@ export interface ReanchorOutput {
 
 export class MdCollabError extends Error { code: string; constructor(code: string, message: string); }
 
+export interface SidecarPermissionParityResult { ok: boolean; warnings: string[]; }
+
 export function parseSidecar(raw: string): Sidecar;
 export function readSidecarFile(path: string): Sidecar;
-export function writeSidecarFileAtomic(path: string, sidecar: Sidecar): void;
+export function ensureSidecarPermissionParity(docPath: string, sidecarPath: string): SidecarPermissionParityResult;
+export function writeSidecarFileAtomic(path: string, sidecar: Sidecar, docPath?: string): void;
 export function sidecarPathForDocument(documentPath: string): string;
 
 export function createThread(input: any): Sidecar;
