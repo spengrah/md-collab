@@ -16,6 +16,8 @@
     "ui"
   ],
   "activationEvents": [
+    "onView:mdCollab.threadChat",
+    "onView:mdCollab.threads",
     "onLanguage:markdown",
     "onCommand:mdCollab.addComment",
     "onCommand:mdCollab.replyToThread",
