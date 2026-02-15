@@ -2,7 +2,7 @@
   "name": "md-collab-vscode",
   "displayName": "md-collab",
   "description": "Inline Markdown collaboration sidecar UI",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publisher": "md-collab",
   "type": "module",
   "engines": {
