@@ -11,6 +11,7 @@ import type { DocumentThreadState } from './model.js';
 export const THREAD_CHAT_VIEW_ID = 'mdCollab.threadChat';
 
 export const chatIntentToCommand = {
+  addComment: 'mdCollab.addComment',
   reply: 'mdCollab.replyToThread',
   resolve: 'mdCollab.resolveThread',
   reopen: 'mdCollab.reopenThread',
@@ -35,6 +36,7 @@ interface WebviewIntentMessage {
   intent: ChatIntent;
   threadId?: string;
   suggestionId?: string;
+  body?: string;
 }
 
 interface WebviewUiMessage {
@@ -131,7 +133,7 @@ const el = (tag, className, text) => {
   return node;
 };
 
-const postIntent = (intent, threadId, suggestionId) => vscode.postMessage({ type: 'intent', intent, threadId, suggestionId });
+const postIntent = (intent, threadId, suggestionId, body) => vscode.postMessage({ type: 'intent', intent, threadId, suggestionId, body });
 const postUi = (type, threadId) => vscode.postMessage({ type, threadId });
 
 const makeButton = (label, intent, threadId, suggestionId, secondary, ariaLabel) => {
@@ -197,9 +199,21 @@ const renderToolbar = () => {
   owner.addEventListener('change', updateFilters);
   hasSuggestions.addEventListener('change', updateFilters);
 
+  const addComment = el('button', '', 'Add comment from selection');
+  addComment.type = 'button';
+  addComment.setAttribute('aria-label', 'Add comment from current selection');
+  addComment.addEventListener('click', () => {
+    const body = window.prompt('Comment text');
+    if (body === null) return;
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    postIntent('addComment', undefined, undefined, trimmed);
+  });
+
   toolbar.appendChild(status);
   toolbar.appendChild(owner);
   toolbar.appendChild(hasSuggestionsWrap);
+  toolbar.appendChild(addComment);
 };
 
 const renderThread = (thread) => {
@@ -233,7 +247,17 @@ const renderThread = (thread) => {
   if (expanded) {
     const body = el('div', 'threadBody');
     const actions = el('div', 'actions');
-    actions.appendChild(makeButton('Reply', 'reply', thread.threadId, undefined, false, 'Reply to thread'));
+    const reply = el('button', '', 'Reply');
+    reply.type = 'button';
+    reply.setAttribute('aria-label', 'Reply to thread');
+    reply.addEventListener('click', () => {
+      const body = window.prompt('Reply text');
+      if (body === null) return;
+      const trimmed = body.trim();
+      if (!trimmed) return;
+      postIntent('reply', thread.threadId, undefined, trimmed);
+    });
+    actions.appendChild(reply);
     if (thread.canResolve) actions.appendChild(makeButton('Resolve', 'resolve', thread.threadId, undefined, true, 'Resolve thread'));
     if (thread.canReopen) actions.appendChild(makeButton('Reopen', 'reopen', thread.threadId, undefined, true, 'Reopen thread'));
     actions.appendChild(makeButton('Suggest from Selection', 'suggestFromSelection', thread.threadId, undefined, false, 'Suggest from selection'));
@@ -407,8 +431,14 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
       this.banner = undefined;
       const command = chatIntentToCommand[message.intent];
       const args: unknown[] = [];
-      if (message.threadId) args.push(message.threadId);
-      if (message.suggestionId) args.push(message.suggestionId);
+      if (message.intent === 'addComment') {
+        if (message.body) args.push({ body: message.body });
+      } else if (message.intent === 'reply') {
+        args.push({ threadId: message.threadId, body: message.body });
+      } else {
+        if (message.threadId) args.push(message.threadId);
+        if (message.suggestionId) args.push(message.suggestionId);
+      }
       try {
         await this.dispatch(command, ...args);
       } catch (err) {

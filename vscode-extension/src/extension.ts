@@ -133,6 +133,12 @@ const normalizeSuggestionIdArg = (arg: unknown): string | undefined => {
   return undefined;
 };
 
+const normalizeBodyArg = (arg: unknown): string | undefined => {
+  if (!arg || typeof arg !== 'object' || !('body' in arg)) return undefined;
+  const body = (arg as { body?: unknown }).body;
+  return typeof body === 'string' ? body : undefined;
+};
+
 const threadIdFromArgOrPick = async (
   state: DocumentThreadState,
   status: 'open' | 'resolved' | 'any',
@@ -359,7 +365,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('mdCollab.addComment', async () => {
+    vscode.commands.registerCommand('mdCollab.addComment', async (arg?: unknown) => {
       const editor = vscode.window.activeTextEditor;
       const state = loadForEditor(editor);
       if (!editor || !state) return;
@@ -373,7 +379,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('md-collab: select text before adding a comment.');
         return;
       }
-      const body = await vscode.window.showInputBox({ prompt: 'Comment text' });
+      const providedBody = normalizeBodyArg(arg)?.trim();
+      const body = providedBody || (await vscode.window.showInputBox({ prompt: 'Comment text' }))?.trim();
       if (!body) return;
 
       try {
@@ -397,7 +404,8 @@ export function activate(context: vscode.ExtensionContext) {
 
       const threadId = await threadIdFromArgOrPick(state, 'any', argThreadId);
       if (!threadId) return;
-      const body = await vscode.window.showInputBox({ prompt: 'Reply text' });
+      const providedBody = normalizeBodyArg(argThreadId)?.trim();
+      const body = providedBody || (await vscode.window.showInputBox({ prompt: 'Reply text' }))?.trim();
       if (!body) return;
 
       try {

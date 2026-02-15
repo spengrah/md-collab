@@ -3,6 +3,7 @@ import { chatIntentToCommand } from '../../vscode-extension/src/threadChatPanel.
 
 describe('chat intent command routing', () => {
   it('maps webview intents to canonical extension commands', () => {
+    expect(chatIntentToCommand.addComment).toBe('mdCollab.addComment');
     expect(chatIntentToCommand.reply).toBe('mdCollab.replyToThread');
     expect(chatIntentToCommand.resolve).toBe('mdCollab.resolveThread');
     expect(chatIntentToCommand.reopen).toBe('mdCollab.reopenThread');

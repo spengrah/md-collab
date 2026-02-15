@@ -59,5 +59,7 @@ describe('chat panel webview behavior', () => {
     expect(__testOnlyClientScript).toContain('bannerActions');
     expect(__testOnlyClientScript).toContain('aria-label');
     expect(__testOnlyClientScript).toContain('Suggestion status');
+    expect(__testOnlyClientScript).toContain('Add comment from selection');
+    expect(__testOnlyClientScript).toContain("window.prompt('Reply text')");
   });
 });
