@@ -557,27 +557,48 @@ export function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
     }),
 
-    vscode.commands.registerCommand('mdCollab.proposeSuggestion', async (argThreadId?: string) => {
+    vscode.commands.registerCommand('mdCollab.proposeSuggestion', async (argThreadId?: unknown) => {
       const editor = vscode.window.activeTextEditor;
       const state = loadForEditor(editor);
       if (!editor || !state || state.readOnly) return;
       const config = getConfig();
       if (!requireAuthor(config)) return;
-      const threadId = await threadIdFromArgOrPick(state, 'any', argThreadId);
-      if (!threadId) return;
       if (editor.selection.isEmpty) {
         void vscode.window.showInformationMessage(
-          'md-collab: Select the target text first, then use “Suggest edit from current selection…” in the thread panel or editor context menu.',
+          'md-collab: Select target text first, then run Propose Suggestion. A thread will be created automatically when needed.',
         );
         return;
       }
+
+      const beforeText = editor.document.getText(editor.selection);
       const replacement = await vscode.window.showInputBox({ prompt: 'Suggested replacement text' });
       if (replacement === undefined) return;
-      const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
-      if (!thread) return;
-      const beforeText = editor.document.getText(editor.selection);
+
+      const explicitThreadId = normalizeThreadIdArg(argThreadId);
+
       try {
-        const next = proposeThreadSuggestion(state, threadId, thread.anchor, beforeText, replacement, config);
+        let workingState = state;
+        let threadId = explicitThreadId;
+
+        if (!threadId) {
+          const startOffset = editor.document.offsetAt(editor.selection.start);
+          const endOffset = editor.document.offsetAt(editor.selection.end);
+          const created = addComment(workingState, editor.document.getText(), startOffset, endOffset, 'Suggestion proposed.', config);
+          workingState = created;
+          threadId = created.sidecar.threads[created.sidecar.threads.length - 1]?.thread_id;
+          if (!threadId) {
+            void vscode.window.showWarningMessage('md-collab: Failed to create thread for suggestion.');
+            return;
+          }
+        }
+
+        const thread = workingState.sidecar.threads.find((t) => t.thread_id === threadId);
+        if (!thread) {
+          void vscode.window.showWarningMessage('md-collab: Could not find target thread for suggestion.');
+          return;
+        }
+
+        const next = proposeThreadSuggestion(workingState, threadId, thread.anchor, beforeText, replacement, config);
         stateByDocument.set(editor.document.uri.toString(), next);
         refresh();
       } catch (err) {
