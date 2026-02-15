@@ -1,7 +1,7 @@
 # guidance-for-thread-panel-chat-webview
 
 ## Intent
-Implement a genuinely chat-like thread panel UX (bubble-first) without compromising existing sidecar safety guarantees.
+Implement a genuinely chat-like thread panel UX (bubble-first) that is close to Google Docs discussion-panel readability/flow, without compromising existing sidecar safety guarantees.
 
 ## Implementation guidance
 

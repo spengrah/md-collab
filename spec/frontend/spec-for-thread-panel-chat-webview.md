@@ -8,12 +8,14 @@ Provide a thread panel UX that feels like Google Docs-style discussion:
 1. chat-bubble message rendering,
 2. clear per-thread grouping,
 3. highly discoverable actions (`Reply`, `Resolve/Reopen`, `Suggest`),
-4. no regression in mutation safety or deterministic behavior.
+4. no regression in mutation safety or deterministic behavior,
+5. practical parity for the **discussion panel experience** (readability + flow), even if the rest of the product remains local-first/Markdown-native.
 
 ## 2. Non-goals
 1. No direct sidecar writes from webview JS.
 2. No schema changes required for initial panel redesign.
 3. No CRDT/live multi-cursor features in this pass.
+4. Full end-to-end Google Docs feature parity outside thread-panel UX (sharing model, permissions, cloud presence, etc.) is out of scope for this iteration.
 
 ## 3. Architecture decision (normative)
 Use a VS Code `WebviewView` (or `WebviewPanel`) for primary thread UI.
