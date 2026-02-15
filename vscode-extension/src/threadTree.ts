@@ -60,6 +60,57 @@ class ReplyActionItem extends vscode.TreeItem {
   }
 }
 
+class ToggleStatusActionItem extends vscode.TreeItem {
+  constructor(threadId: string, status: 'open' | 'resolved') {
+    super(status === 'open' ? 'Resolve thread' : 'Reopen thread', vscode.TreeItemCollapsibleState.None);
+    this.contextValue = `mdCollab.thread.${status}.toggleAction`;
+    this.command = {
+      command: status === 'open' ? 'mdCollab.resolveThread' : 'mdCollab.reopenThread',
+      title: status === 'open' ? 'Resolve thread' : 'Reopen thread',
+      arguments: [threadId],
+    };
+    this.iconPath = new vscode.ThemeIcon(status === 'open' ? 'pass' : 'history');
+  }
+}
+
+class ProposeSuggestionActionItem extends vscode.TreeItem {
+  constructor(threadId: string) {
+    super('Suggest edit from current selection…', vscode.TreeItemCollapsibleState.None);
+    this.contextValue = 'mdCollab.thread.suggestAction';
+    this.command = { command: 'mdCollab.proposeSuggestion', title: 'Suggest edit', arguments: [threadId] };
+    this.iconPath = new vscode.ThemeIcon('sparkle');
+    this.tooltip = 'Select text in the editor, then run this action to propose replacement text for this thread.';
+  }
+}
+
+class SuggestionItem extends vscode.TreeItem {
+  constructor(public readonly threadId: string, public readonly suggestionId: string, status: string, replacement: string) {
+    super(`Suggestion ${suggestionId.slice(0, 8)} (${status})`, vscode.TreeItemCollapsibleState.None);
+    this.contextValue = `mdCollab.suggestion.${status}`;
+    this.description = replacement.replace(/\s+/g, ' ').slice(0, 80);
+    this.tooltip = replacement;
+    this.iconPath = new vscode.ThemeIcon(status === 'proposed' ? 'lightbulb-autofix' : 'check');
+  }
+}
+
+class SuggestionActionItem extends vscode.TreeItem {
+  constructor(
+    label: string,
+    icon: string,
+    command: string,
+    threadId: string,
+    suggestionId: string,
+    contextValue: string,
+    tooltip?: string,
+  ) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.contextValue = contextValue;
+    this.command = { command, title: label, arguments: [threadId, suggestionId] };
+    this.iconPath = new vscode.ThemeIcon(icon);
+    this.tooltip = tooltip;
+  }
+}
+
 export class ThreadTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
   private readonly emitter = new vscode.EventEmitter<vscode.TreeItem | undefined>();
   readonly onDidChangeTreeData = this.emitter.event;
@@ -109,7 +160,59 @@ export class ThreadTreeProvider implements vscode.TreeDataProvider<vscode.TreeIt
         return new MessageItem(`${message.author.author_label} · ${timestamp}`, message.body);
       });
 
-      return [...messageItems, new ReplyActionItem(thread.thread_id)];
+      const actionItems: vscode.TreeItem[] = [
+        new ReplyActionItem(thread.thread_id),
+        new ToggleStatusActionItem(thread.thread_id, thread.status),
+        new ProposeSuggestionActionItem(thread.thread_id),
+      ];
+
+      const suggestionItems = (thread.suggestions ?? []).map(
+        (suggestion) =>
+          new SuggestionItem(
+            thread.thread_id,
+            suggestion.suggestion_id,
+            suggestion.status,
+            suggestion.proposed_edit.replacement_text,
+          ),
+      );
+
+      return [...messageItems, ...actionItems, ...suggestionItems];
+    }
+
+    if (element instanceof SuggestionItem) {
+      const actions: vscode.TreeItem[] = [];
+      if (element.contextValue === 'mdCollab.suggestion.proposed') {
+        actions.push(
+          new SuggestionActionItem(
+            'Apply suggestion',
+            'check',
+            'mdCollab.applySuggestion',
+            element.threadId,
+            element.suggestionId,
+            'mdCollab.suggestion.applyAction',
+          ),
+          new SuggestionActionItem(
+            'Reject suggestion',
+            'close',
+            'mdCollab.rejectSuggestion',
+            element.threadId,
+            element.suggestionId,
+            'mdCollab.suggestion.rejectAction',
+          ),
+        );
+      }
+      actions.push(
+        new SuggestionActionItem(
+          'View base version context',
+          'versions',
+          'mdCollab.viewSuggestionBaseVersion',
+          element.threadId,
+          element.suggestionId,
+          'mdCollab.suggestion.baseAction',
+          'Open the version context used when this suggestion was created (or guidance if unavailable).',
+        ),
+      );
+      return actions;
     }
 
     return [];

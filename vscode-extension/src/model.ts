@@ -491,6 +491,7 @@ export const getSuggestionBaseVersion = (
   return {
     source: 'workspace',
     title: 'Suggestion base version unavailable',
-    reason: 'No git base commit metadata available for this suggestion in workspace-first mode.',
+    reason:
+      'No git base commit metadata for this suggestion (likely created in workspace timeline mode). Set mdCollab.timelineKind to git/hybrid for new threads to enable base-version lookup.',
   };
 };

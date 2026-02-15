@@ -26,6 +26,8 @@
     "onCommand:mdCollab.reloadSidecar",
     "onCommand:mdCollab.openThreadPanel",
     "onCommand:mdCollab.openSidecarForRepair",
+    "onCommand:mdCollab.showConflictHelp",
+    "onCommand:mdCollab.showBaseVersionHelp",
     "onCommand:mdCollab.proposeSuggestion",
     "onCommand:mdCollab.applySuggestion",
     "onCommand:mdCollab.rejectSuggestion",
@@ -43,6 +45,8 @@
       { "command": "mdCollab.reloadSidecar", "title": "md-collab: Reload Sidecar" },
       { "command": "mdCollab.openThreadPanel", "title": "md-collab: Open Thread Panel" },
       { "command": "mdCollab.openSidecarForRepair", "title": "md-collab: Open Sidecar for Repair" },
+      { "command": "mdCollab.showConflictHelp", "title": "md-collab: Conflict Help" },
+      { "command": "mdCollab.showBaseVersionHelp", "title": "md-collab: Base Version Help" },
       { "command": "mdCollab.proposeSuggestion", "title": "md-collab: Propose Suggestion" },
       { "command": "mdCollab.applySuggestion", "title": "md-collab: Apply Suggestion" },
       { "command": "mdCollab.rejectSuggestion", "title": "md-collab: Reject Suggestion" },
@@ -54,6 +58,43 @@
           "command": "mdCollab.addComment",
           "when": "editorTextFocus && editorHasSelection && resourceExtname == .md",
           "group": "navigation@50"
+        },
+        {
+          "command": "mdCollab.proposeSuggestion",
+          "when": "editorTextFocus && editorHasSelection && resourceExtname == .md",
+          "group": "navigation@51"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "mdCollab.resolveThread",
+          "when": "view == mdCollab.threads && viewItem == mdCollab.thread.open",
+          "group": "inline@10"
+        },
+        {
+          "command": "mdCollab.reopenThread",
+          "when": "view == mdCollab.threads && viewItem == mdCollab.thread.resolved",
+          "group": "inline@10"
+        },
+        {
+          "command": "mdCollab.proposeSuggestion",
+          "when": "view == mdCollab.threads && (viewItem == mdCollab.thread.open || viewItem == mdCollab.thread.resolved)",
+          "group": "inline@20"
+        },
+        {
+          "command": "mdCollab.applySuggestion",
+          "when": "view == mdCollab.threads && viewItem == mdCollab.suggestion.proposed",
+          "group": "inline@30"
+        },
+        {
+          "command": "mdCollab.rejectSuggestion",
+          "when": "view == mdCollab.threads && viewItem == mdCollab.suggestion.proposed",
+          "group": "inline@31"
+        },
+        {
+          "command": "mdCollab.viewSuggestionBaseVersion",
+          "when": "view == mdCollab.threads && (viewItem == mdCollab.suggestion.proposed || viewItem == mdCollab.suggestion.applied || viewItem == mdCollab.suggestion.rejected || viewItem == mdCollab.suggestion.obsolete)",
+          "group": "navigation@40"
         }
       ]
     },

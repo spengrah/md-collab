@@ -48,7 +48,20 @@ const requireAuthor = (config: Config): boolean => {
 
 const explainMutationError = (err: unknown) => {
   if (err instanceof SidecarConflictError) {
-    void vscode.window.showWarningMessage('md-collab: Sidecar changed externally. Run “md-collab: Reload Sidecar” and retry.');
+    void vscode.window
+      .showWarningMessage(
+        'md-collab: Sidecar conflict detected. This is expected only when another process/editor changed the .comments.json file after you loaded it.',
+        'Reload Sidecar',
+        'Conflict Help',
+      )
+      .then((choice) => {
+        if (choice === 'Reload Sidecar') {
+          void vscode.commands.executeCommand('mdCollab.reloadSidecar');
+        }
+        if (choice === 'Conflict Help') {
+          void vscode.commands.executeCommand('mdCollab.showConflictHelp');
+        }
+      });
     return;
   }
 
@@ -101,12 +114,29 @@ const loadForEditor = (editor: vscode.TextEditor | undefined): DocumentThreadSta
   return loaded;
 };
 
+const normalizeThreadIdArg = (arg: unknown): string | undefined => {
+  if (typeof arg === 'string') return arg;
+  if (arg && typeof arg === 'object' && 'threadId' in arg && typeof (arg as { threadId?: unknown }).threadId === 'string') {
+    return (arg as { threadId: string }).threadId;
+  }
+  return undefined;
+};
+
+const normalizeSuggestionIdArg = (arg: unknown): string | undefined => {
+  if (typeof arg === 'string') return arg;
+  if (arg && typeof arg === 'object' && 'suggestionId' in arg && typeof (arg as { suggestionId?: unknown }).suggestionId === 'string') {
+    return (arg as { suggestionId: string }).suggestionId;
+  }
+  return undefined;
+};
+
 const threadIdFromArgOrPick = async (
   state: DocumentThreadState,
   status: 'open' | 'resolved' | 'any',
-  arg?: string,
+  arg?: unknown,
 ): Promise<string | undefined> => {
-  if (arg) return arg;
+  const normalizedArg = normalizeThreadIdArg(arg);
+  if (normalizedArg) return normalizedArg;
 
   const threads = state.sidecar.threads.filter((t) => status === 'any' || t.status === status);
   const pick = await vscode.window.showQuickPick(
@@ -188,16 +218,19 @@ const applyDecorations = (
     );
     const relevance = thread.relevance_state ?? 'active';
     const timeline = timelineBadge(thread.thread_version_context?.kind);
+    const quoteSnippet = thread.anchor.fallback.quote.replace(/\s+/g, ' ').slice(0, 60);
     markerBuckets[thread.anchor.anchor_confidence].push({
       range: markerRange,
-      hoverMessage: `md-collab thread ${thread.thread_id} (${thread.anchor.anchor_confidence})\nrelevance: ${relevance}\ntimeline: ${timeline}`,
+      hoverMessage: `md-collab thread ${thread.thread_id} (${thread.anchor.anchor_confidence})\nrelevance: ${relevance}\ntimeline: ${timeline}\nquote: “${quoteSnippet}”`,
       renderOptions: {
         after: {
           contentText: ` 💬 ${relevance} · ${timeline}`,
         },
       },
     });
-    rangeBuckets[thread.anchor.anchor_confidence].push({ range: highlightRange });
+    if (thread.anchor.anchor_confidence === 'high' || thread.anchor.anchor_confidence === 'medium') {
+      rangeBuckets[thread.anchor.anchor_confidence].push({ range: highlightRange });
+    }
   }
 
   for (const key of ['high', 'medium', 'low', 'broken']) {
@@ -351,7 +384,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand('mdCollab.replyToThread', async (argThreadId?: string) => {
+    vscode.commands.registerCommand('mdCollab.replyToThread', async (argThreadId?: unknown) => {
       const editor = vscode.window.activeTextEditor;
       const state = loadForEditor(editor);
       if (!editor || !state) return;
@@ -482,6 +515,48 @@ export function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: false });
     }),
 
+    vscode.commands.registerCommand('mdCollab.showConflictHelp', async () => {
+      const doc = await vscode.workspace.openTextDocument({
+        content: [
+          '# md-collab conflict behavior',
+          '',
+          '- A sidecar conflict occurs only when the `.comments.json` changed on disk after this editor state loaded it.',
+          '- Typical causes: two VS Code windows, a git checkout/reset touching sidecars, or manual sidecar edits.',
+          '- If you are the only writer in one window, conflicts are *not* expected.',
+          '',
+          '## Deterministic repro',
+          '',
+          '1. Open the same markdown file in two VS Code windows.',
+          '2. In window A, add a comment and keep window B untouched.',
+          '3. In window B, add/reply/resolve without reloading sidecar first.',
+          '4. md-collab should show a sidecar conflict warning.',
+          '',
+          '## Recovery',
+          '',
+          'Run **md-collab: Reload Sidecar** and retry the action.',
+        ].join('\n'),
+        language: 'markdown',
+      });
+      await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
+    }),
+
+    vscode.commands.registerCommand('mdCollab.showBaseVersionHelp', async () => {
+      const doc = await vscode.workspace.openTextDocument({
+        content: [
+          '# Suggestion base version availability',
+          '',
+          'Base-version content is available only when a thread has git metadata (`timelineKind = git|hybrid`) and the referenced commit/path still exists.',
+          '',
+          'If base version is unavailable:',
+          '- In Settings, set **mdCollab.timelineKind** to `git` or `hybrid` for new threads.',
+          '- Ensure this file is inside a git repo and commits referenced by threads still exist locally.',
+          '- Existing workspace-only threads will continue to report unavailable base versions.',
+        ].join('\n'),
+        language: 'markdown',
+      });
+      await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
+    }),
+
     vscode.commands.registerCommand('mdCollab.proposeSuggestion', async (argThreadId?: string) => {
       const editor = vscode.window.activeTextEditor;
       const state = loadForEditor(editor);
@@ -489,7 +564,13 @@ export function activate(context: vscode.ExtensionContext) {
       const config = getConfig();
       if (!requireAuthor(config)) return;
       const threadId = await threadIdFromArgOrPick(state, 'any', argThreadId);
-      if (!threadId || editor.selection.isEmpty) return;
+      if (!threadId) return;
+      if (editor.selection.isEmpty) {
+        void vscode.window.showInformationMessage(
+          'md-collab: Select the target text first, then use “Suggest edit from current selection…” in the thread panel or editor context menu.',
+        );
+        return;
+      }
       const replacement = await vscode.window.showInputBox({ prompt: 'Suggested replacement text' });
       if (replacement === undefined) return;
       const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
@@ -514,7 +595,10 @@ export function activate(context: vscode.ExtensionContext) {
       if (!threadId) return;
       const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
       const suggestions = (thread?.suggestions ?? []).filter((s) => s.status === 'proposed');
-      if (!thread || suggestions.length === 0) return;
+      if (!thread || suggestions.length === 0) {
+        void vscode.window.showInformationMessage('md-collab: No proposed suggestions available for this thread.');
+        return;
+      }
       const suggestionId =
         argSuggestionId ??
         (
@@ -570,7 +654,10 @@ export function activate(context: vscode.ExtensionContext) {
       if (!threadId) return;
       const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
       const suggestions = (thread?.suggestions ?? []).filter((s) => s.status === 'proposed');
-      if (!thread || suggestions.length === 0) return;
+      if (!thread || suggestions.length === 0) {
+        void vscode.window.showInformationMessage('md-collab: No proposed suggestions available for this thread.');
+        return;
+      }
       const suggestionId =
         argSuggestionId ?? (await vscode.window.showQuickPick(suggestions.map((s) => ({ label: s.suggestion_id }))))?.label;
       if (!suggestionId) return;
@@ -591,14 +678,30 @@ export function activate(context: vscode.ExtensionContext) {
       if (!threadId) return;
       const thread = state.sidecar.threads.find((t) => t.thread_id === threadId);
       const suggestions = thread?.suggestions ?? [];
-      if (!thread || suggestions.length === 0) return;
+      if (!thread || suggestions.length === 0) {
+        void vscode.window.showInformationMessage('md-collab: This thread has no suggestions yet. Use “Suggest edit…” first.');
+        return;
+      }
       const suggestionId =
         argSuggestionId ?? (await vscode.window.showQuickPick(suggestions.map((s) => ({ label: s.suggestion_id }))))?.label;
       if (!suggestionId) return;
 
       const base = getSuggestionBaseVersion(state, threadId, suggestionId);
       if (!base.content) {
-        void vscode.window.showInformationMessage(`md-collab: ${base.reason ?? 'base version unavailable'}`);
+        void vscode.window
+          .showInformationMessage(
+            `md-collab: ${base.reason ?? 'base version unavailable'}`,
+            'Open md-collab settings',
+            'Why unavailable?'
+          )
+          .then((choice) => {
+            if (choice === 'Open md-collab settings') {
+              void vscode.commands.executeCommand('workbench.action.openSettings', 'mdCollab.timelineKind');
+            }
+            if (choice === 'Why unavailable?') {
+              void vscode.commands.executeCommand('mdCollab.showBaseVersionHelp');
+            }
+          });
         return;
       }
 

@@ -68,6 +68,22 @@ describe('vscode-extension model sidecar lifecycle', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('supports adding a second comment in the same in-memory session', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'md-collab-ext-'));
+    const docPath = join(dir, 'doc.md');
+    const text = '# title\nhello world\n';
+    writeFileSync(docPath, text, 'utf8');
+
+    const first = addComment(loadStateForDocument(docPath), text, 8, 13, 'comment 1', config);
+    const second = addComment(first, text, 14, 19, 'comment 2', config);
+
+    expect(second.sidecar.threads).toHaveLength(2);
+    expect(second.sidecar.threads[0].messages[0].body).toBe('comment 1');
+    expect(second.sidecar.threads[1].messages[0].body).toBe('comment 2');
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('reanchors and persists confidence updates', () => {
     const dir = mkdtempSync(join(tmpdir(), 'md-collab-ext-'));
     const docPath = join(dir, 'doc.md');
