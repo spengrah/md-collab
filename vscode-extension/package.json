@@ -217,7 +217,8 @@
       "mdCollab": [
         {
           "id": "mdCollab.threadChat",
-          "name": "Threads"
+          "name": "Threads",
+          "type": "webview"
         },
         {
           "id": "mdCollab.threads",
