@@ -12,5 +12,7 @@ describe('chat intent command routing', () => {
     expect(chatIntentToCommand.rejectSuggestion).toBe('mdCollab.rejectSuggestion');
     expect(chatIntentToCommand.viewBaseVersion).toBe('mdCollab.viewSuggestionBaseVersion');
     expect(chatIntentToCommand.jumpToAnchor).toBe('mdCollab.navigateToThread');
+    expect(chatIntentToCommand.relinkAnchor).toBe('mdCollab.reanchorCurrentFile');
+    expect(chatIntentToCommand.reloadSidecar).toBe('mdCollab.reloadSidecar');
   });
 });

@@ -37,7 +37,7 @@ const sampleState = (): DocumentThreadState => ({
         thread_id: 't-resolved',
         status: 'resolved',
         anchor: {
-          anchor_confidence: 'low',
+          anchor_confidence: 'broken',
           primary: { start: { line: 2, column: 1 }, end: { line: 2, column: 5 } },
           fallback: { quote: 'bye', prefix: '', suffix: '' },
         },
@@ -48,6 +48,12 @@ const sampleState = (): DocumentThreadState => ({
             author: { author_id: 'system', author_label: 'System', verified: null },
             body: 'Resolved',
             created_at: '2026-01-01T01:00:00.000Z',
+          },
+          {
+            message_id: 'm3',
+            author: { author_id: 'me', author_label: 'Me', verified: null },
+            body: 'Follow-up',
+            created_at: '2026-01-01T02:00:00.000Z',
           },
         ],
         thread_version_context: { kind: 'git', base_commit: 'abc' },
@@ -87,7 +93,21 @@ describe('chat panel view-model', () => {
     expect(vm.groups.resolved[0].canResolve).toBe(false);
     expect(vm.groups.resolved[0].canReopen).toBe(true);
     expect(vm.groups.resolved[0].suggestions[0].status).toBe('proposed');
+    expect(vm.groups.resolved[0].anchorConfidence).toBe('broken');
 
     expect(vm.ui.expandedThreadIds).toContain('t-open');
+  });
+
+  it('applies status/ownership/suggestion filters deterministically', () => {
+    const ui = defaultChatPanelUiState();
+    ui.currentAuthorId = 'me';
+    ui.filters.status = 'resolved';
+    ui.filters.ownership = 'mine';
+    ui.filters.hasSuggestions = true;
+
+    const vm = toChatPanelViewModel(sampleState(), ui)!;
+    expect(vm.groups.open).toHaveLength(0);
+    expect(vm.groups.resolved).toHaveLength(1);
+    expect(vm.groups.resolved[0].threadId).toBe('t-resolved');
   });
 });

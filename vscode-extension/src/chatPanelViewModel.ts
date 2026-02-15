@@ -53,6 +53,7 @@ export interface ChatPanelViewModel {
 export interface ChatPanelUiState {
   expandedThreadIds: Set<string>;
   activeThreadId?: string;
+  currentAuthorId?: string;
   filters: ChatPanelViewModel['ui']['filters'];
 }
 
@@ -65,6 +66,7 @@ const defaultFilters: ChatPanelViewModel['ui']['filters'] = {
 export const defaultChatPanelUiState = (): ChatPanelUiState => ({
   expandedThreadIds: new Set<string>(),
   activeThreadId: undefined,
+  currentAuthorId: undefined,
   filters: { ...defaultFilters },
 });
 
@@ -99,12 +101,26 @@ const threadToVm = (thread: DocumentThreadState['sidecar']['threads'][number]): 
   };
 };
 
+const threadOwnedBy = (source: DocumentThreadState['sidecar']['threads'][number], currentAuthorId?: string): boolean => {
+  if (!currentAuthorId) return true;
+  return source.messages.some((message) => message.author.author_id === currentAuthorId);
+};
+
 export const toChatPanelViewModel = (state: DocumentThreadState | undefined, ui: ChatPanelUiState): ChatPanelViewModel | undefined => {
   if (!state) return undefined;
 
-  const threads = state.sidecar.threads.map(threadToVm);
-  const open = threads.filter((thread) => thread.status === 'open');
-  const resolved = threads.filter((thread) => thread.status === 'resolved');
+  const mapped = state.sidecar.threads.map((source) => ({ source, vm: threadToVm(source) }));
+  const visible = mapped
+    .filter(({ source, vm }) => {
+      if (ui.filters.status !== 'all' && vm.status !== ui.filters.status) return false;
+      if (ui.filters.hasSuggestions && vm.suggestions.length === 0) return false;
+      if (ui.filters.ownership === 'mine' && !threadOwnedBy(source, ui.currentAuthorId)) return false;
+      return true;
+    })
+    .map((entry) => entry.vm);
+
+  const open = visible.filter((thread) => thread.status === 'open');
+  const resolved = visible.filter((thread) => thread.status === 'resolved');
 
   return {
     document: {

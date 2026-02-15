@@ -26,6 +26,7 @@ import { MdCollabError } from '../vendor/core/index.js';
 const stateByDocument = new Map<string, DocumentThreadState>();
 let activeSidecarWatcher: vscode.FileSystemWatcher | undefined;
 let lastActiveMarkdownDocumentKey: string | undefined;
+let showConflictBannerInChatPanel: (() => void) | undefined;
 
 const getConfig = (): Config => {
   const config = vscode.workspace.getConfiguration('mdCollab');
@@ -49,6 +50,7 @@ const requireAuthor = (config: Config): boolean => {
 
 const explainMutationError = (err: unknown) => {
   if (err instanceof SidecarConflictError) {
+    showConflictBannerInChatPanel?.();
     void vscode.window
       .showWarningMessage(
         'md-collab: Sidecar conflict detected. This is expected only when another process/editor changed the .comments.json file after you loaded it.',
@@ -239,7 +241,8 @@ export function activate(context: vscode.ExtensionContext) {
   const threadTree = new ThreadTreeProvider();
   vscode.window.registerTreeDataProvider('mdCollab.threads', threadTree);
 
-  const threadChatPanel = new ThreadChatPanelProvider((command, ...args) => vscode.commands.executeCommand(command, ...args));
+  const threadChatPanel = new ThreadChatPanelProvider((command, ...args) => vscode.commands.executeCommand(command, ...args), () => getConfig().authorId || undefined);
+  showConflictBannerInChatPanel = () => threadChatPanel.showConflictBanner();
   context.subscriptions.push(vscode.window.registerWebviewViewProvider(THREAD_CHAT_VIEW_ID, threadChatPanel));
 
   const transientNavigateDecoration = vscode.window.createTextEditorDecorationType({
@@ -561,8 +564,8 @@ export function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
     }),
 
-    vscode.commands.registerCommand('mdCollab.proposeSuggestionFromSelection', async () => {
-      await vscode.commands.executeCommand('mdCollab.proposeSuggestion');
+    vscode.commands.registerCommand('mdCollab.proposeSuggestionFromSelection', async (argThreadId?: unknown) => {
+      await vscode.commands.executeCommand('mdCollab.proposeSuggestion', argThreadId);
     }),
 
     vscode.commands.registerCommand('mdCollab.proposeSuggestion', async (argThreadId?: unknown) => {
