@@ -222,11 +222,6 @@ const applyDecorations = (
     markerBuckets[thread.anchor.anchor_confidence].push({
       range: markerRange,
       hoverMessage: `md-collab thread ${thread.thread_id} (${thread.anchor.anchor_confidence})\nrelevance: ${relevance}\ntimeline: ${timeline}\nquote: “${quoteSnippet}”`,
-      renderOptions: {
-        after: {
-          contentText: ` 💬 ${relevance} · ${timeline}`,
-        },
-      },
     });
     if (thread.anchor.anchor_confidence === 'high' || thread.anchor.anchor_confidence === 'medium') {
       rangeBuckets[thread.anchor.anchor_confidence].push({ range: highlightRange });
