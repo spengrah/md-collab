@@ -88,14 +88,6 @@ For each proposed suggestion bubble/card:
 
 Hash mismatch behavior remains unchanged: mark `obsolete`, do not mutate doc.
 
-### 5.4 Suggestion actions
-For each proposed suggestion bubble/card:
-1. `Apply`
-2. `Reject`
-3. `View base version context`
-
-Hash mismatch behavior remains unchanged: mark `obsolete`, do not mutate doc.
-
 ## 6. Command-routing safety contract
 Webview may only send intents to extension host; extension host executes canonical commands.
 

@@ -60,7 +60,7 @@ Implement a genuinely chat-like thread panel UX (bubble-first) that is close to 
 - Wire extension->webview data push.
 
 2. Phase B — command intents
-- Wire reply/resolve/reopen/suggest intents to existing commands.
+- Wire add-comment/reply/resolve/reopen/suggest intents to existing commands.
 - Keep TreeView as fallback.
 
 3. Phase C — suggestion cards
