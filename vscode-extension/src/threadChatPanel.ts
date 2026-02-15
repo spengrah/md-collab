@@ -108,7 +108,7 @@ const renderThread = (thread) => {
     actions.appendChild(makeButton('Reply', 'reply', thread.threadId, undefined, false, 'Reply to thread'));
     if (thread.canResolve) actions.appendChild(makeButton('Resolve', 'resolve', thread.threadId, undefined, true, 'Resolve thread'));
     if (thread.canReopen) actions.appendChild(makeButton('Reopen', 'reopen', thread.threadId, undefined, true, 'Reopen thread'));
-    actions.appendChild(makeButton('Suggest from Selection', 'suggest', thread.threadId, undefined, false, 'Suggest from selection'));
+    actions.appendChild(makeButton('Suggest from Selection', 'suggestFromSelection', thread.threadId, undefined, false, 'Suggest from selection'));
     actions.appendChild(makeButton('Jump to anchor', 'jumpToAnchor', thread.threadId, undefined, true, 'Jump to anchor'));
     body.appendChild(actions);
 
