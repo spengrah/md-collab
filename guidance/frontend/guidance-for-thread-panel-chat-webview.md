@@ -13,10 +13,13 @@ Implement a genuinely chat-like thread panel UX (bubble-first) that is close to 
 2. Keep writes in extension host
 - Webview posts intent messages only.
 - Extension host validates payload and dispatches canonical commands.
+- Support in-panel authoring intents (`addComment`, `reply`) but execute through host commands only.
 - Never import sidecar write code into webview bundle.
 
 3. Make action affordances obvious
 - Render explicit buttons in each expanded thread (`Reply`, `Resolve/Reopen`, `Suggest`).
+- Add lightweight inline reply composer in expanded thread (textarea + submit/cancel).
+- Add top-level “Add comment from selection” affordance in panel toolbar/header.
 - Do not rely on right-click or hidden kebab menus for primary actions.
 - Keep button labels task-oriented and short.
 
@@ -38,9 +41,10 @@ Implement a genuinely chat-like thread panel UX (bubble-first) that is close to 
 7. Test strategy
 - Unit tests:
   - view-model mapping
-  - intent->command routing table
+  - intent->command routing table (including `addComment` and `reply` payload paths)
   - status/action visibility by thread state
 - Integration tests:
+  - comment/reply submission via webview controls
   - resolve/reopen via webview buttons
   - suggestion propose/apply/reject path
   - conflict warning recovery action

@@ -12,10 +12,12 @@ Provide a thread panel UX that feels like Google Docs-style discussion:
 5. practical parity for the **discussion panel experience** (readability + flow), even if the rest of the product remains local-first/Markdown-native.
 
 ## 2. Non-goals
-1. No direct sidecar writes from webview JS.
+1. No direct sidecar writes from webview JS (all writes still go through extension-host commands).
 2. No schema changes required for initial panel redesign.
 3. No CRDT/live multi-cursor features in this pass.
 4. Full end-to-end Google Docs feature parity outside thread-panel UX (sharing model, permissions, cloud presence, etc.) is out of scope for this iteration.
+
+Clarification: comment/reply authoring **from the webview UI** is in scope, as long as execution is routed through canonical host commands.
 
 ## 3. Architecture decision (normative)
 Use a VS Code `WebviewView` (or `WebviewPanel`) for primary thread UI.
@@ -64,13 +66,27 @@ Each message renders as a vertical bubble block:
 
 ### 5.3 Thread actions (high discoverability)
 Within expanded thread, render sticky action row near top or bottom:
-1. `Reply`
+1. `Reply` (opens inline composer in-panel, then submits via `mdCollab.replyToThread`)
 2. `Resolve` (if open) / `Reopen` (if resolved)
 3. `Suggest from Selection (Auto-thread if needed)`
 4. `Jump to anchor`
 5. `View base version` (when suggestion selected/available)
 
 Action labels must be explicit and not hidden behind ambiguous context menus.
+
+### 5.4 In-panel comment/reply authoring
+1. The webview should support creating new top-level comments from current editor selection.
+2. The webview should support replying inline inside an expanded thread (lightweight composer: textarea + submit/cancel).
+3. Submission path must remain command-routed through extension host (no direct sidecar mutation in webview runtime).
+4. If selection is missing/invalid for top-level comment, show immediate actionable guidance.
+
+### 5.5 Suggestion actions
+For each proposed suggestion bubble/card:
+1. `Apply`
+2. `Reject`
+3. `View base version context`
+
+Hash mismatch behavior remains unchanged: mark `obsolete`, do not mutate doc.
 
 ### 5.4 Suggestion actions
 For each proposed suggestion bubble/card:
@@ -84,11 +100,12 @@ Hash mismatch behavior remains unchanged: mark `obsolete`, do not mutate doc.
 Webview may only send intents to extension host; extension host executes canonical commands.
 
 Required mapping:
-1. reply intent -> `mdCollab.replyToThread`
-2. resolve intent -> `mdCollab.resolveThread`
-3. reopen intent -> `mdCollab.reopenThread`
-4. suggest intent -> `mdCollab.proposeSuggestion` or `mdCollab.proposeSuggestionFromSelection`
-5. apply/reject/base intents -> existing suggestion commands
+1. add-comment intent -> `mdCollab.addComment` (selection-based top-level comment)
+2. reply intent -> `mdCollab.replyToThread`
+3. resolve intent -> `mdCollab.resolveThread`
+4. reopen intent -> `mdCollab.reopenThread`
+5. suggest intent -> `mdCollab.proposeSuggestion` or `mdCollab.proposeSuggestionFromSelection`
+6. apply/reject/base intents -> existing suggestion commands
 
 Forbidden:
 1. direct file writes in webview runtime,
@@ -122,7 +139,7 @@ Forbidden:
 3. No sidecar migration required.
 
 ## 12. Acceptance criteria
-1. Spencer can perform reply/resolve/suggest without hunting in nested menus.
+1. Spencer can perform comment/reply/resolve/suggest without hunting in nested menus.
 2. Message history reads as chat-style thread, not flattened metadata rows.
 3. All mutation paths still pass existing conflict/guard behavior.
 4. Existing tests pass + new UI contract tests added for command intent mapping.
