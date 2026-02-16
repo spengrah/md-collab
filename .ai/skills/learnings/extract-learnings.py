@@ -362,11 +362,15 @@ def extract_with_claude(transcript_path: Path, session_id: str, model: str = "cl
         "--permission-mode", "bypassPermissions",  # Allow headless Read without approval
     ]
 
+    # Strip nested-session detection env vars so headless Claude can launch
+    env = {k: v for k, v in os.environ.items() if k not in ("CLAUDECODE", "CLAUDE_CODE")}
+
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         timeout=300,  # 5 minute timeout
+        env=env,
     )
 
     if result.returncode != 0:
