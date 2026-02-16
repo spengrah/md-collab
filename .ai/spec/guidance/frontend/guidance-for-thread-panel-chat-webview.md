@@ -19,9 +19,12 @@ Implement a genuinely chat-like thread panel UX (bubble-first) that is close to 
 3. Make action affordances obvious
 - Render explicit buttons in each expanded thread (`Reply`, `Resolve/Reopen`, `Suggest`).
 - Add lightweight inline reply composer in expanded thread (textarea + submit/cancel).
+- Support `Cmd/Ctrl+Enter` submit alongside button submit.
+- Keep thread expanded after submit.
 - Add top-level “Add comment from selection” affordance in panel toolbar/header.
 - Do not rely on right-click or hidden kebab menus for primary actions.
 - Keep button labels task-oriented and short.
+- Treat click-no-op as a bug class: always surface inline error state when dispatch fails.
 
 4. Prefer message readability over metadata density
 - Put author/time in a light header row.
@@ -32,6 +35,11 @@ Implement a genuinely chat-like thread panel UX (bubble-first) that is close to 
 - Primary suggestion button should trigger `proposeSuggestionFromSelection` path.
 - If no valid selection, show immediate actionable instruction.
 - Preserve thread-scoped suggestion path when invoked within a specific thread.
+- Render suggestion cards in unified diff style with word-level highlights.
+- Prefer human-readable diff labels over git hunk syntax.
+- Make long diffs collapsible/expandable.
+- Keep applied/rejected suggestions hidden by default behind filter toggles.
+- De-emphasize “View base version” as secondary action in V1.
 
 6. Design for Remote-SSH resilience
 - Keep webview assets small and local.
@@ -43,15 +51,20 @@ Implement a genuinely chat-like thread panel UX (bubble-first) that is close to 
   - view-model mapping
   - intent->command routing table (including `addComment` and `reply` payload paths)
   - status/action visibility by thread state
+  - diff projection logic (unified view, word-level markers, collapsed state)
 - Integration tests:
   - comment/reply submission via webview controls
+  - composer `Cmd/Ctrl+Enter` submit path
+  - optimistic submit + rollback/recovery behavior
   - resolve/reopen via webview buttons
   - suggestion propose/apply/reject path
-  - conflict warning recovery action
+  - conflict auto-retry-once then reload prompt path
+  - inline thread error state when action dispatch fails
 - Manual acceptance:
   - keyboard-only operations
   - long-thread readability
   - high-thread-count responsiveness
+  - real-document suggestion editing flow end-to-end
 
 ## Suggested phased plan
 

@@ -1,6 +1,6 @@
 # spec-for-thread-panel-chat-webview
 
-Status: draft v0.3  
+Status: draft v0.4  
 Scope: replace flat tree-style thread panel UX with threaded chat-bubble Webview while preserving canonical command-routing + sidecar safety.
 
 ## 1. Goal
@@ -79,12 +79,26 @@ Action labels must be explicit and not hidden behind ambiguous context menus.
 2. The webview should support replying inline inside an expanded thread (lightweight composer: textarea + submit/cancel).
 3. Submission path must remain command-routed through extension host (no direct sidecar mutation in webview runtime).
 4. If selection is missing/invalid for top-level comment, show immediate actionable guidance.
+5. Inline composer must support keyboard submit (`Cmd/Ctrl+Enter`) and button submit.
+6. After submit, keep the thread expanded.
+7. Draft text must persist per thread across rerenders/reloads in the same session.
+8. Clicking a visible action must never silently no-op; if command dispatch fails, show inline thread error state.
+9. Mutation UX uses optimistic update; on failure, rollback or mark pending item failed with clear inline state.
+10. On sidecar conflict during submit, auto-retry exactly once; if second attempt fails, show inline prompt with explicit reload action.
 
-### 5.5 Suggestion actions
+### 5.5 Suggestion actions and diff presentation
 For each proposed suggestion bubble/card:
 1. `Apply`
 2. `Reject`
-3. `View base version context`
+3. `View base version context` remains available but de-emphasized as secondary affordance.
+
+Suggestion body presentation requirements:
+1. Primary representation is unified diff-style (before/after in one flow).
+2. Include word-level highlights inside changed lines.
+3. Use simplified human labels (not raw hunk syntax like `@@ ... @@`).
+4. Multi-line suggestion diffs must be collapsible/expandable.
+5. Applied/rejected suggestions are hidden by default behind filter controls.
+6. V1 skips syntax-coloring specialization for fenced code; focus on markdown-first readable diff rendering.
 
 Hash mismatch behavior remains unchanged: mark `obsolete`, do not mutate doc.
 
@@ -121,9 +135,11 @@ Forbidden:
 3. Debounce refresh bursts from sidecar watcher.
 
 ## 10. Failure and recovery UX
-1. Conflict errors surface inline toast/banner with `Reload Sidecar` action.
+1. Conflict errors surface inline thread-level error state first, with `Reload Sidecar` action.
 2. Base-version unavailable explains why and links to settings/help.
 3. Broken anchor threads show relink CTA.
+4. Retry policy for submit mutations is fixed: one automatic retry, then explicit user prompt.
+5. Failed optimistic submissions must be visibly recoverable (retry/edit/discard) without losing draft text.
 
 ## 11. Migration and rollout
 1. Keep current TreeView behind fallback command during transition.
@@ -131,8 +147,10 @@ Forbidden:
 3. No sidecar migration required.
 
 ## 12. Acceptance criteria
-1. Spencer can perform comment/reply/resolve/suggest without hunting in nested menus.
+1. Spencer can perform comment/reply/resolve/suggest without hunting in nested menus, and action clicks never silently no-op.
 2. Message history reads as chat-style thread, not flattened metadata rows.
-3. All mutation paths still pass existing conflict/guard behavior.
-4. Existing tests pass + new UI contract tests added for command intent mapping.
-5. Remote-SSH workflow remains functional.
+3. Suggestion cards read like unified git-diff style changes with word-level highlights and collapsible long diffs.
+4. All mutation paths still pass existing conflict/guard behavior, including optimistic submit + retry-once + inline recovery.
+5. Existing tests pass + new UI contract/integration tests cover command mapping, composer keybind, draft persistence, and conflict recovery.
+6. Remote-SSH workflow remains functional.
+7. Usability bar: user can work on a real document with suggestions end-to-end.
