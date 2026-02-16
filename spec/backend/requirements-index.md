@@ -20,7 +20,11 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 - **MDC-BE-014**: v0.1 enforces runtime author payload validation on all mutation operations (`author_id`, `author_label`, `verified` present/valid). Full identity resolution-order behavior is deferred.
 - **MDC-BE-015**: Review-state/version-context fields remain backward compatible and relevance-state transitions stay deterministic.
 - **MDC-BE-016**: Sidecar create/rewrite normalizes POSIX permission parity to paired markdown file mode/group on final path.
-- **MDC-BE-017**: Owner parity is attempted best-effort; EPERM paths are explicit/logged and do not silently drift.
+- **MDC-BE-017**: Group parity alignment of sidecar `gid` with markdown file `gid`.
+- **MDC-BE-018**: Owner parity alignment of sidecar `uid` with markdown file owner attempted best-effort when permitted by runtime privileges.
+- **MDC-BE-019**: Atomic write parity normalization occurs on final sidecar path after temp-file rename.
+- **MDC-BE-020**: Permission normalization must not add permissions not present on source markdown mode bits.
+- **MDC-BE-021**: Permission-parity failures logged with operation type and errno; mutation fails only when parity failure implies unusable sidecar access.
 
 ## Mapping
 
@@ -33,4 +37,4 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 | MDC-BE-012 | `spec-for-backend-implementation-plan-tdd.md` | CI test plan + changelog gate |
 | MDC-BE-014 | `spec-for-author-identity.md` | runtime author validation tests across all mutation ops |
 | MDC-BE-015 | `spec-for-review-state-and-versioning.md` | version-context field compatibility + relevance-state determinism tests |
-| MDC-BE-016..017 | `spec-for-sidecar-permission-parity.md` | permission parity create/rewrite tests + EPERM warning-path tests |
+| MDC-BE-016..021 | `spec-for-sidecar-permission-parity.md` | permission parity create/rewrite tests + EPERM warning-path tests |

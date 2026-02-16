@@ -14,19 +14,19 @@
 
 ### P0 gaps
 1. **Fast add-comment affordances**
-   - Spec mapping: `spec/frontend/spec-for-comment-authoring-ux-v0.md`
-   - Guidance mapping: `guidance/frontend/guidance-for-comment-authoring-ux-v0.md`
+   - Spec mapping: `spec/frontend/archive/v0.1/spec-for-comment-authoring-ux.md`
+   - Guidance mapping: (archived)
 2. **Panel-to-document navigation**
-   - Spec mapping: `spec/frontend/spec-for-thread-navigation-v0.md`
-   - Guidance mapping: `guidance/frontend/guidance-for-thread-navigation-v0.md`
+   - Spec mapping: `spec/frontend/archive/v0.1/spec-for-thread-navigation.md`
+   - Guidance mapping: (archived)
 3. **Lost-update protection for sidecar writes**
-   - Spec mapping: `spec/frontend/spec-for-sidecar-sync-and-write-safety-v0.md`
-   - Guidance mapping: `guidance/frontend/guidance-for-sidecar-sync-and-write-safety-v0.md`
+   - Spec mapping: `spec/frontend/archive/v0.1/spec-for-sidecar-sync-and-write-safety.md`
+   - Guidance mapping: (archived)
 
 ### P1 gaps
 1. **Conversation-style panel rendering**
-   - Spec mapping: `spec/frontend/spec-for-threaded-panel-v0.md`
-   - Guidance mapping: `guidance/frontend/guidance-for-threaded-panel-v0.md`
+   - Spec mapping: `spec/frontend/archive/v0.1/spec-for-threaded-panel.md`
+   - Guidance mapping: (archived)
 
 ### P2 gaps
 1. **Further polish parity with mature products**
