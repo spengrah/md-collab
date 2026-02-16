@@ -246,6 +246,7 @@ const applyMutation = (args) => {
             dryRun,
             changed,
         }),
+        ...(args.dataExtras ?? {}),
     };
     return ok(args.command, data);
 };
@@ -522,6 +523,7 @@ export const runCli = (argv, io = defaultIo) => {
                 docPath,
                 io,
                 ids: { thread_id: threadId, suggestion_id: suggestionId },
+                dataExtras: { preflight },
                 mutate: (sidecar) => applySuggestion({ sidecar, threadId, suggestionId, actor, beforeText: extracted.text ?? undefined }),
             });
         }

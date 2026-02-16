@@ -297,6 +297,7 @@ const applyMutation = (args: {
   ids?: Record<string, string | undefined>;
   mutate: (current: Sidecar) => Sidecar;
   overrideChanged?: (before: Sidecar, after: Sidecar) => boolean;
+  dataExtras?: Record<string, unknown>;
 }): CliRunResult => {
   const sidecar = readSidecarOrThrow(args.sidecarPath);
   const revBefore = revForSidecarFile(args.sidecarPath);
@@ -329,6 +330,7 @@ const applyMutation = (args: {
       dryRun,
       changed,
     }),
+    ...(args.dataExtras ?? {}),
   };
 
   return ok(args.command, data);
@@ -621,6 +623,7 @@ export const runCli = (argv: string[], io: CliIo = defaultIo): CliRunResult => {
         docPath,
         io,
         ids: { thread_id: threadId, suggestion_id: suggestionId },
+        dataExtras: { preflight },
         mutate: (sidecar) => applySuggestion({ sidecar, threadId, suggestionId, actor, beforeText: extracted.text ?? undefined }),
       });
     }

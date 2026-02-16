@@ -91,6 +91,90 @@ describe('agent-safe CLI', () => {
     expect(readFileSync(sidecarPath, 'utf8')).toBe(before);
   });
 
+  it('applies suggestion when preflight hash matches and reports apply decision', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'md-collab-cli-'));
+    const sidecar = {
+      schema_version: '0.1.0',
+      document: { path: 'doc.md' },
+      threads: [
+        {
+          thread_id: 't1',
+          status: 'open',
+          anchor: {
+            primary: {
+              start: { line: 1, column: 1, offset_utf16: 0 },
+              end: { line: 1, column: 3, offset_utf16: 2 },
+            },
+            fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
+            anchor_confidence: 'high',
+          },
+          author: { author_id: 'a1', author_label: 'A', verified: true },
+          messages: [
+            {
+              message_id: 'm1',
+              author: { author_id: 'a1', author_label: 'A', verified: true },
+              body: 'x',
+              created_at: '2026-01-01T00:00:00.000Z',
+              edited_at: null,
+            },
+          ],
+          created_at: '2026-01-01T00:00:00.000Z',
+          updated_at: '2026-01-01T00:00:00.000Z',
+          suggestions: [
+            {
+              suggestion_id: 's1',
+              thread_id: 't1',
+              status: 'proposed',
+              proposed_edit: {
+                anchor: {
+                  primary: {
+                    start: { line: 1, column: 1, offset_utf16: 0 },
+                    end: { line: 1, column: 3, offset_utf16: 2 },
+                  },
+                  fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
+                  anchor_confidence: 'high',
+                },
+                before_text_hash: 'sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+                replacement_text: 'XYZ',
+              },
+              proposed_by: { author_id: 'a1', author_label: 'A', verified: true },
+              proposed_at: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+      ],
+    };
+
+    const { docPath, sidecarPath } = writeDocAndSidecar(dir, serializeDeterministic(sidecar), 'abc def\n');
+    const result = runCli([
+      'suggestion',
+      'apply',
+      '--doc',
+      docPath,
+      '--sidecar',
+      sidecarPath,
+      '--thread-id',
+      't1',
+      '--suggestion-id',
+      's1',
+      '--author-id',
+      'a2',
+      '--author-label',
+      'Reviewer',
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    const data = result.payload.data as {
+      preflight: { decision: string; anchor_viable: boolean; current_text_hash: string | null; expected_before_text_hash: string };
+    };
+    expect(data.preflight.decision).toBe('apply');
+    expect(data.preflight.anchor_viable).toBe(true);
+    expect(data.preflight.current_text_hash).toBe(data.preflight.expected_before_text_hash);
+
+    const saved = JSON.parse(readFileSync(sidecarPath, 'utf8'));
+    expect(saved.threads[0].suggestions[0].status).toBe('applied');
+  });
+
   it('marks suggestion obsolete when preflight hash mismatches but anchor is viable', () => {
     const dir = mkdtempSync(join(tmpdir(), 'md-collab-cli-'));
     const sidecar = {
@@ -164,6 +248,13 @@ describe('agent-safe CLI', () => {
     ]);
 
     expect(result.exitCode).toBe(0);
+    const data = result.payload.data as {
+      preflight: { decision: string; anchor_viable: boolean; current_text_hash: string | null; expected_before_text_hash: string };
+    };
+    expect(data.preflight.decision).toBe('obsolete');
+    expect(data.preflight.anchor_viable).toBe(true);
+    expect(data.preflight.current_text_hash).not.toBe(data.preflight.expected_before_text_hash);
+
     const saved = JSON.parse(readFileSync(sidecarPath, 'utf8'));
     expect(saved.threads[0].suggestions[0].status).toBe('obsolete');
   });
