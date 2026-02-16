@@ -1,0 +1,17 @@
+{
+  "lint": {
+    "enabled": true,
+    "commands": [
+      { "name": "Build", "command": "npm run build" }
+    ]
+  },
+  "test": {
+    "enabled": true,
+    "commands": [
+      { "name": "Unit tests", "command": "npm test" }
+    ]
+  },
+  "learnings": {
+    "enabled": true
+  }
+}

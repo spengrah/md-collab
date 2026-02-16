@@ -1,0 +1,12 @@
+# Shared by CI (dorny/paths-filter) and pre-push hook
+# Tests run if ANY changed file matches these patterns
+
+code:
+  - 'src/**'
+  - 'vscode-extension/src/**'
+  - 'obsidian-plugin/src/**'
+  - 'tests/**'
+  - 'schemas/**'
+  - 'vitest.config.ts'
+  - 'tsconfig.json'
+  - 'package.json'
