@@ -1,0 +1,118 @@
+# Claude Code Review Workflow
+#
+# This workflow runs Claude Code to review PRs.
+#
+# Requirements:
+# - ANTHROPIC_API_KEY secret (from https://console.anthropic.com)
+# - .ai/rules/code-review.md with review standards
+
+name: Claude Review
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+jobs:
+  claude-review:
+    name: Claude Code Review
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            ## Code Review Task
+
+            Use `gh pr diff ${{ github.event.pull_request.number }}` to see the changes.
+
+            **First, check for previous reviews** using `gh pr view ${{ github.event.pull_request.number }} --comments`.
+
+            ### If you have a previous review:
+            This is a follow-up review. Focus only on:
+            - Whether your previous concerns were addressed
+            - Any new issues introduced in the latest changes
+            - Do NOT repeat the full review rubric - just respond to the delta
+
+            ### If this is the first review:
+            Conduct a comprehensive code review following @.ai/rules/code-review.md
+
+            Key criteria:
+            - No security concerns (SQL injection, XSS, auth issues, secrets in code)
+            - No bugs or unhandled edge cases
+            - Comprehensive test coverage for new/changed code
+            - Follows repository conventions
+            - Proper error handling
+
+            ## How to Submit Review
+
+            Submit exactly ONE GitHub review:
+
+            ```bash
+            # If ALL criteria pass (or previous concerns addressed):
+            gh pr review ${{ github.event.pull_request.number }} --approve -b "Your review here
+
+            RESULT=PASS"
+
+            # If ANY issues remain or new issues found:
+            gh pr review ${{ github.event.pull_request.number }} --request-changes -b "Your review here
+
+            RESULT=FAIL"
+            ```
+
+            IMPORTANT: Include file paths and line numbers in the review body.
+            Do not use gh api for inline comments.
+
+          claude_args: '--allowed-tools "Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr review:*),Bash(git diff:*),Bash(git log:*)"'
+
+      - name: Check Claude review result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+
+          # Get Claude's review for this specific commit
+          REVIEW=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
+            --jq "[.[] | select(.user.login == \"claude[bot]\" and .commit_id == \"$COMMIT_SHA\")] | last")
+
+          if [[ -z "$REVIEW" || "$REVIEW" == "null" ]]; then
+            echo "No Claude review found for commit $COMMIT_SHA - passing (fail-open)"
+            exit 0
+          fi
+
+          STATE=$(echo "$REVIEW" | jq -r '.state')
+          BODY=$(echo "$REVIEW" | jq -r '.body')
+
+          echo "Review state: $STATE"
+          echo "Review commit: $COMMIT_SHA"
+
+          # Fail if CHANGES_REQUESTED or RESULT=FAIL
+          if [[ "$STATE" == "CHANGES_REQUESTED" ]]; then
+            echo "Claude requested changes - failing workflow"
+            exit 1
+          fi
+
+          if echo "$BODY" | grep -qi "RESULT=FAIL"; then
+            echo "Claude indicated RESULT=FAIL - failing workflow"
+            exit 1
+          fi
+
+          echo "Claude review passed"
