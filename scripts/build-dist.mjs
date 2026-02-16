@@ -1,5 +1,6 @@
-import { mkdirSync, readdirSync, rmSync, writeFileSync, readFileSync, copyFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { execSync } from 'node:child_process';
 import ts from 'typescript';
 
 const root = new URL('..', import.meta.url).pathname;
@@ -9,6 +10,7 @@ const distDir = join(root, 'dist');
 rmSync(distDir, { recursive: true, force: true });
 mkdirSync(distDir, { recursive: true });
 
+// Step 1: Transpile-only for JS output (fast, ignores type errors)
 for (const entry of readdirSync(srcDir)) {
   if (!entry.endsWith('.ts')) continue;
 
@@ -32,6 +34,7 @@ for (const entry of readdirSync(srcDir)) {
   }
 }
 
-copyFileSync(join(root, 'scripts', 'index.d.ts'), join(distDir, 'index.d.ts'));
+// Step 2: Generate .d.ts files from source via tsc (--noCheck skips type errors)
+execSync('npx tsc --emitDeclarationOnly --noCheck', { cwd: root, stdio: 'inherit' });
 
-console.log('Built dist/ from src/*.ts (transpile-only) + type declarations.');
+console.log('Built dist/ from src/*.ts (transpile-only JS + tsc declarations).');
