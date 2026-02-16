@@ -46,7 +46,19 @@ const makeButton = (label, intent, threadId, suggestionId, secondary, ariaLabel)
   const b = el('button', secondary ? 'secondary' : '', label);
   b.type = 'button';
   b.setAttribute('aria-label', ariaLabel || label);
-  b.addEventListener('click', () => postIntent(intent, threadId, suggestionId));
+  b.addEventListener('click', () => {
+    inlineErrorByThreadId[threadId || 'root'] = '';
+    const reqId = requestId();
+    pendingByRequestId[reqId] = {
+      threadId,
+      body: '',
+      intent,
+      ts: new Date().toISOString(),
+    };
+    postIntent(intent, threadId, suggestionId, undefined, reqId);
+    persistUi();
+    render();
+  });
   return b;
 };
 
@@ -172,6 +184,14 @@ const renderToolbar = () => {
 
   addCommentWrap.appendChild(addCommentBody);
   addCommentWrap.appendChild(addCommentSubmit);
+
+  const rootError = inlineErrorByThreadId.root;
+  if (rootError) {
+    const errorRow = el('div', 'inlineError', rootError);
+    const reload = makeButton('Reload sidecar', 'reloadSidecar', undefined, undefined, true, 'Reload sidecar');
+    errorRow.appendChild(reload);
+    addCommentWrap.appendChild(errorRow);
+  }
 
   toolbar.appendChild(status);
   toolbar.appendChild(owner);
@@ -352,15 +372,25 @@ window.addEventListener('message', (event) => {
     if (!event.data) return;
     if (event.data.type === 'intentResult') {
       const pending = pendingByRequestId[event.data.requestId];
+      const targetThreadId = pending?.threadId || event.data.threadId;
       if (pending) {
         if (!event.data.ok) {
-          inlineErrorByThreadId[pending.threadId || 'root'] =
-            event.data.kind === 'conflict'
-              ? 'Submit failed due to conflict after one auto-retry. Reload sidecar and retry.'
-              : (event.data.message || 'Action failed. Please retry.');
-          drafts[pending.threadId ? threadDraftKey(pending.threadId) : addCommentDraftKey] = pending.body;
+          if (event.data.kind === 'conflict') {
+            inlineErrorByThreadId[targetThreadId || 'root'] =
+              'Submit failed due to conflict after one auto-retry. Reload sidecar and retry.';
+          } else if ((targetThreadId || 'root') === 'root' && (event.data.kind === 'selection' || pending.intent === 'addComment')) {
+            inlineErrorByThreadId.root =
+              'Could not add comment from selection. Select the target text in the editor, then retry. If the document changed, reload sidecar and try again.';
+          } else {
+            inlineErrorByThreadId[targetThreadId || 'root'] = event.data.message || 'Action failed. Please retry.';
+          }
+          if (pending.body) {
+            drafts[pending.threadId ? threadDraftKey(pending.threadId) : addCommentDraftKey] = pending.body;
+          }
         }
         delete pendingByRequestId[event.data.requestId];
+      } else if (!event.data.ok && targetThreadId) {
+        inlineErrorByThreadId[targetThreadId] = event.data.message || 'Action failed. Please retry.';
       }
       persistUi();
       render();

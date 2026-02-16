@@ -64,6 +64,12 @@ describe('chat panel webview behavior', () => {
     expect(__testOnlyClientScript).toContain('pendingByRequestId');
     expect(__testOnlyClientScript).toContain("type === 'intentResult'");
     expect(__testOnlyClientScript).toContain('inlineErrorByThreadId');
+    expect(__testOnlyClientScript).toContain("pendingByRequestId[reqId] = {");
+    expect(__testOnlyClientScript).toContain("postIntent(intent, threadId, suggestionId, undefined, reqId)");
+    expect(__testOnlyClientScript).toContain('const rootError = inlineErrorByThreadId.root;');
+    expect(__testOnlyClientScript).toContain('Could not add comment from selection. Select the target text in the editor, then retry.');
+    expect(__testOnlyClientScript).toContain('delete pendingByRequestId[event.data.requestId];');
+    expect(__testOnlyClientScript).toContain('if (pending.body) {');
     expect(__testOnlyClientScript).toContain("Thread panel failed to render. Try reloading the window.");
     expect(__testOnlyClientScript).toContain("window.addEventListener('error'");
     expect(__testOnlyClientScript).toContain("window.addEventListener('unhandledrejection'");

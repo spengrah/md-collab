@@ -247,11 +247,10 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
       this.banner = undefined;
       const command = chatIntentToCommand[message.intent];
       const args = buildIntentDispatchArgs(message);
+      const requestId = message.requestId ?? randomUUID();
       try {
         await this.dispatch(command, ...args);
-        if (message.requestId) {
-          void webviewView.webview.postMessage({ type: 'intentResult', requestId: message.requestId, ok: true });
-        }
+        void webviewView.webview.postMessage({ type: 'intentResult', requestId, threadId: message.threadId, ok: true });
       } catch (err) {
         const text = err instanceof Error ? err.message : String(err);
         const lowered = text.toLowerCase();
@@ -259,9 +258,7 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
           try {
             await this.dispatch(chatIntentToCommand.reloadSidecar);
             await this.dispatch(command, ...args);
-            if (message.requestId) {
-              void webviewView.webview.postMessage({ type: 'intentResult', requestId: message.requestId, ok: true, retried: true });
-            }
+            void webviewView.webview.postMessage({ type: 'intentResult', requestId, threadId: message.threadId, ok: true, retried: true });
             return;
           } catch {
             this.banner = {
@@ -269,17 +266,29 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
               message: 'Sidecar conflict detected. Reload sidecar and retry.',
               actions: [{ label: 'Reload Sidecar', intent: 'reloadSidecar' }],
             };
-            if (message.requestId) {
-              void webviewView.webview.postMessage({ type: 'intentResult', requestId: message.requestId, ok: false, kind: 'conflict' });
-            }
+            void webviewView.webview.postMessage({
+              type: 'intentResult',
+              requestId,
+              threadId: message.threadId,
+              ok: false,
+              kind: 'conflict',
+            });
             this.renderNow();
             return;
           }
         }
 
-        if (message.requestId) {
-          void webviewView.webview.postMessage({ type: 'intentResult', requestId: message.requestId, ok: false, kind: 'error', message: text });
-        }
+        const looksLikeSelectionError =
+          message.intent === 'addComment' &&
+          (lowered.includes('selection') || lowered.includes('anchor') || lowered.includes('cursor'));
+        void webviewView.webview.postMessage({
+          type: 'intentResult',
+          requestId,
+          threadId: message.threadId,
+          ok: false,
+          kind: looksLikeSelectionError ? 'selection' : 'error',
+          message: text,
+        });
         this.renderNow();
       }
     });
