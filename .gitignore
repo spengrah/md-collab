@@ -9,3 +9,4 @@ obsidian-plugin/vendor/
 # Learnings log ephemeral state (learnings themselves are committed)
 .ai/log/*
 !.ai/log/learnings/
+!.ai/log/learnings/**
