@@ -6,5 +6,6 @@ export * from './serializer.js';
 export * from './operations.js';
 export * from './reanchor.js';
 export * from './sidecar-file.js';
+export * from './cli.js';
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

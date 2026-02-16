@@ -25,7 +25,20 @@ Local-first Markdown collaboration for `.md` documents with sidecar comment thre
 - `spec/quality/README.md` — acceptance + traceability requirements
 - `docs/post-testing-fixes-notes.md` — latest manual-test-driven UX clarifications
 
+## CLI (agent-safe sidecar operations)
+- Binary: `md-collab` (alias: `mdc`)
+- Commands:
+  - `inspect status`
+  - `validate sidecar`
+  - `comment add`, `comment reply`
+  - `thread resolve`, `thread reopen`, `thread reanchor`, `thread refresh-relevance`
+  - `suggestion propose`, `suggestion apply`, `suggestion reject`
+- Global safety flags: `--json`, `--dry-run`, `--doc`, `--sidecar`, `--expect-rev`, `--audit`, `--audit-file`
+
+All mutation commands run through: read/validate → mutate via core ops → validate → deterministic atomic write, and return stable `{ok, command, code, ...}` envelopes for agent mediation.
+
 ## Implementation + verification commands
+- `npm run build`
 - `npm test`
 - `npm run accept`
 - `npm run accept:smoke`
