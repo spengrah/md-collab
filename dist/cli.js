@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
-import { applyReanchor, applySuggestion, createThread, evaluateSidecarRelevance, evaluateThreadRelevance, MdCollabError, parseSidecar, proposeSuggestion, readSidecarFile, rejectSuggestion, reopenThread, reanchor, reply, resolveThread, serializeDeterministic, sidecarPathForDocument, validateSidecar, writeSidecarFileAtomic, } from './index.js';
+import { applyReanchor, applySuggestion, createThread, evaluateSidecarRelevance, evaluateThreadRelevance, MdCollabError, proposeSuggestion, readSidecarFile, rejectSuggestion, reopenThread, reanchor, reply, resolveThread, serializeDeterministic, sidecarPathForDocument, validateSidecarResult, writeSidecarFileAtomic, } from './index.js';
 const defaultIo = {
     stdout: (line) => console.log(line),
     stderr: (line) => console.error(line),
@@ -9,6 +9,7 @@ const CODE_TO_EXIT = {
     OK: 0,
     SCHEMA_INVALID: 2,
     ANCHOR_INVALID: 2,
+    AUTHOR_INVALID: 2,
     BAD_ARGS: 2,
     THREAD_NOT_FOUND: 3,
     MESSAGE_NOT_FOUND: 3,
@@ -53,7 +54,7 @@ const asBoolean = (value) => {
         return ['true', '1', 'yes', 'on'].includes(value.toLowerCase());
     return false;
 };
-const fail = (command, code, message, details) => ({
+const fail = (command, code, message, details, data) => ({
     exitCode: CODE_TO_EXIT[code] ?? 10,
     payload: {
         ok: false,
@@ -61,6 +62,7 @@ const fail = (command, code, message, details) => ({
         code,
         message,
         details: details ?? {},
+        ...(data ? { data } : {}),
     },
 });
 const ok = (command, data, audit) => ({
@@ -133,7 +135,7 @@ const sidecarCounts = (sidecar) => {
     return counts;
 };
 const maybeEmitAudit = (flags, event, io) => {
-    const mode = asString(flags.get('audit')) ?? 'stdout';
+    const mode = asString(flags.get('audit')) ?? 'none';
     if (mode === 'none')
         return;
     const line = `${JSON.stringify(event)}\n`;
@@ -188,6 +190,14 @@ const validateStrict = (sidecar) => {
         if (!thread.messages || thread.messages.length === 0) {
             errors.push(`/threads/${thread.thread_id}/messages must not be empty`);
         }
+        for (const suggestion of thread.suggestions ?? []) {
+            if (suggestion.status === 'proposed' && suggestion.decision) {
+                errors.push(`/threads/${thread.thread_id}/suggestions/${suggestion.suggestion_id} proposed suggestions must not include decision`);
+            }
+            if (suggestion.status !== 'proposed' && !suggestion.decision) {
+                errors.push(`/threads/${thread.thread_id}/suggestions/${suggestion.suggestion_id} non-proposed suggestions must include decision`);
+            }
+        }
     }
     return errors;
 };
@@ -213,8 +223,10 @@ const applyMutation = (args) => {
     const revBefore = revForSidecarFile(args.sidecarPath);
     guardRev(args.sidecarPath, args.flags, revBefore);
     const next = args.mutate(sidecar);
-    if (!validateSidecar(next))
-        throw new MdCollabError('SCHEMA_INVALID', 'result sidecar invalid');
+    const validation = validateSidecarResult(next);
+    if (!validation.valid) {
+        throw new MdCollabError('SCHEMA_INVALID', `result sidecar invalid: ${validation.errors.join('; ')}`);
+    }
     const dryRun = asBoolean(args.flags.get('dry-run'));
     const serializedNext = serializeDeterministic(next);
     const revAfter = revForBytes(serializedNext);
@@ -282,20 +294,23 @@ export const runCli = (argv, io = defaultIo) => {
         if (command === 'validate sidecar') {
             const { sidecarPath } = resolvePaths(flags);
             const raw = readFileUtf8(sidecarPath);
-            let parsed;
-            try {
-                parsed = parseSidecar(raw);
-            }
-            catch (err) {
-                if (err instanceof MdCollabError) {
-                    return fail(command, err.code, err.message);
-                }
-                throw err;
-            }
             const strict = asBoolean(flags.get('strict'));
-            const strictErrors = strict ? validateStrict(parsed) : [];
-            if (strictErrors.length > 0) {
-                return fail(command, 'SCHEMA_INVALID', 'strict validation failed', { errors: strictErrors });
+            let parsedUnknown;
+            try {
+                parsedUnknown = JSON.parse(raw);
+            }
+            catch {
+                return fail(command, 'SCHEMA_INVALID', 'invalid json', {}, { valid: false, strict, errors: ['invalid json'] });
+            }
+            const schemaValidation = validateSidecarResult(parsedUnknown);
+            const strictErrors = schemaValidation.valid && strict ? validateStrict(parsedUnknown) : [];
+            const errors = [...schemaValidation.errors, ...strictErrors];
+            if (errors.length > 0) {
+                return fail(command, 'SCHEMA_INVALID', strictErrors.length > 0 ? 'strict validation failed' : 'schema validation failed', {}, {
+                    valid: false,
+                    strict,
+                    errors,
+                });
             }
             return ok(command, { valid: true, strict, errors: [] });
         }
@@ -482,7 +497,7 @@ export const runCli = (argv, io = defaultIo) => {
             const expectedHash = suggestion.proposed_edit.before_text_hash;
             const hashMatch = currentHash === expectedHash;
             const viable = extracted.viable;
-            const decision = hashMatch && viable ? 'apply' : 'block';
+            const decision = !viable ? 'block' : hashMatch ? 'apply' : 'obsolete';
             const preflight = {
                 thread_id: threadId,
                 suggestion_id: suggestionId,
@@ -497,8 +512,8 @@ export const runCli = (argv, io = defaultIo) => {
                     : null,
                 decision,
             };
-            if (decision !== 'apply') {
-                return fail(command, 'PRECHECK_BLOCKED', 'suggestion apply blocked by preflight', { preflight });
+            if (decision === 'block') {
+                return fail(command, 'PRECHECK_BLOCKED', 'suggestion apply blocked by preflight', { preflight }, { preflight, decision });
             }
             return applyMutation({
                 command,

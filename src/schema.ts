@@ -14,6 +14,25 @@ const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
 const validate = ajv.compile<Sidecar>(schema);
 
+export interface SidecarValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+export const validateSidecarResult = (data: unknown): SidecarValidationResult => {
+  const valid = validate(data) as boolean;
+  if (valid) {
+    return { valid: true, errors: [] };
+  }
+
+  const errors = (validate.errors ?? []).map((entry) => {
+    const location = entry.instancePath || '/';
+    return `${location} ${entry.message ?? 'is invalid'}`.trim();
+  });
+
+  return { valid: false, errors };
+};
+
 export const parseSidecar = (json: string): Sidecar => {
   let parsed: unknown;
   try {
@@ -22,10 +41,11 @@ export const parseSidecar = (json: string): Sidecar => {
     error('SCHEMA_INVALID', 'invalid json');
   }
 
-  if (!validate(parsed)) {
-    error('SCHEMA_INVALID', ajv.errorsText(validate.errors));
+  const result = validateSidecarResult(parsed);
+  if (!result.valid) {
+    error('SCHEMA_INVALID', result.errors.join('; '));
   }
   return parsed;
 };
 
-export const validateSidecar = (data: unknown): data is Sidecar => validate(data) as boolean;
+export const validateSidecar = (data: unknown): data is Sidecar => validateSidecarResult(data).valid;

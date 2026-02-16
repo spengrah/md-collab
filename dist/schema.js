@@ -10,6 +10,17 @@ const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
 const validate = ajv.compile(schema);
+export const validateSidecarResult = (data) => {
+    const valid = validate(data);
+    if (valid) {
+        return { valid: true, errors: [] };
+    }
+    const errors = (validate.errors ?? []).map((entry) => {
+        const location = entry.instancePath || '/';
+        return `${location} ${entry.message ?? 'is invalid'}`.trim();
+    });
+    return { valid: false, errors };
+};
 export const parseSidecar = (json) => {
     let parsed;
     try {
@@ -18,11 +29,12 @@ export const parseSidecar = (json) => {
     catch {
         error('SCHEMA_INVALID', 'invalid json');
     }
-    if (!validate(parsed)) {
-        error('SCHEMA_INVALID', ajv.errorsText(validate.errors));
+    const result = validateSidecarResult(parsed);
+    if (!result.valid) {
+        error('SCHEMA_INVALID', result.errors.join('; '));
     }
     return parsed;
 };
-export const validateSidecar = (data) => validate(data);
+export const validateSidecar = (data) => validateSidecarResult(data).valid;
 //# sourceMappingURL=schema.js.map
 //# sourceMappingURL=schema.js.map
