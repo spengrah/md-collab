@@ -36,5 +36,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run backend tests
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
         run: npm test
+
+      - name: Coverage threshold check
+        run: npm run test:coverage
+
+      - name: Full acceptance suite
+        run: npm run accept
+
+      - name: Traceability check
+        run: npm run traceability:check

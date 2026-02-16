@@ -13,6 +13,12 @@ export default defineConfig({
       reporter: ['text', 'text-summary'],
       include: ['src/**/*.ts', 'vscode-extension/src/**/*.ts', 'obsidian-plugin/src/**/*.ts'],
       exclude: ['src/cli.ts'],
+      thresholds: {
+        statements: 50,
+        lines: 50,
+        functions: 75,
+        branches: 70,
+      },
     },
   },
 });

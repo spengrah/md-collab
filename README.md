@@ -40,8 +40,17 @@ All mutation commands run through: read/validate → mutate via core ops → val
 ## Implementation + verification commands
 - `npm run build`
 - `npm test`
-- `npm run accept`
+- `npm run test:coverage` (enforces Vitest thresholds)
 - `npm run accept:smoke`
+- `npm run accept`
 - `npm run traceability:check`
 - `npm --prefix vscode-extension run compile`
 - `npm --prefix obsidian-plugin install && npm --prefix obsidian-plugin run build`
+
+## Quality gates
+- **Pre-push hook** (configured via `.ai/pre-push.json`) runs:
+  1. build
+  2. unit tests
+  3. coverage threshold check
+  4. acceptance smoke suite
+- **CI** (`.github/workflows/backend-tests.yml`) runs stronger checks, including full acceptance (`npm run accept`) and traceability (`npm run traceability:check`).

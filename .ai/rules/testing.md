@@ -37,4 +37,8 @@ Integration tests can substitute for unit tests when unit tests would require he
 
 ## Before Pushing
 
-Run `npm test` and verify all tests pass before pushing.
+Pre-push checks are configured in `.ai/pre-push.json` and should cover:
+1. `npm run build`
+2. `npm test`
+3. `npm run test:coverage` (must satisfy Vitest thresholds)
+4. `npm run accept:smoke`

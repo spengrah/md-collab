@@ -8,7 +8,9 @@
   "test": {
     "enabled": true,
     "commands": [
-      { "name": "Unit tests", "command": "npm test" }
+      { "name": "Unit tests", "command": "npm test" },
+      { "name": "Coverage threshold check", "command": "npm run test:coverage" },
+      { "name": "Acceptance smoke", "command": "npm run accept:smoke" }
     ]
   },
   "learnings": {
