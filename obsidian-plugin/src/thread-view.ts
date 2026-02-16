@@ -132,75 +132,84 @@ export class ThreadPanelView extends ItemView {
       return;
     }
 
-    root.createEl('p', { text: `Open (${snapshot.openCount})`, cls: 'md-collab-state-label' });
-    root.createEl('p', { text: `Resolved (${snapshot.resolvedCount})`, cls: 'md-collab-state-label' });
-
-    for (const thread of this.state.sidecar.threads) {
-      const isExpanded = this.expandedThreadIds.has(thread.thread_id);
-      const card = root.createDiv({ cls: 'md-collab-thread-card' });
-      card.setAttr('aria-label', `Thread ${thread.thread_id} ${thread.status}`);
-
-      const heading = card.createDiv({ cls: 'md-collab-thread-heading' });
-      const toggle = heading.createEl('button', {
-        text: `${isExpanded ? '▾' : '▸'} ${thread.messages[0]?.body.slice(0, 100) ?? '(no message)'}`,
-        cls: 'md-collab-thread-toggle md-collab-focus-visible',
+    const renderThreadGroup = (label: 'Open' | 'Resolved', status: 'open' | 'resolved'): void => {
+      const section = root.createDiv({ cls: 'md-collab-thread-group' });
+      section.setAttr('aria-label', `${label} threads`);
+      section.createEl('p', {
+        text: `${label} (${status === 'open' ? snapshot.openCount : snapshot.resolvedCount})`,
+        cls: 'md-collab-state-label',
       });
-      toggle.setAttr('aria-expanded', isExpanded ? 'true' : 'false');
-      toggle.setAttr('aria-label', `Toggle thread ${thread.thread_id}`);
-      toggle.onclick = () => this.toggleExpanded(thread.thread_id);
 
-      heading.createEl('small', { text: ` ${thread.status.toUpperCase()} · ${thread.messages.length} message(s)` });
+      for (const thread of this.state!.sidecar.threads.filter((candidate) => candidate.status === status)) {
+        const isExpanded = this.expandedThreadIds.has(thread.thread_id);
+        const card = section.createDiv({ cls: 'md-collab-thread-card' });
+        card.setAttr('aria-label', `Thread ${thread.thread_id} ${thread.status}`);
 
-      if (!isExpanded) continue;
+        const heading = card.createDiv({ cls: 'md-collab-thread-heading' });
+        const toggle = heading.createEl('button', {
+          text: `${isExpanded ? '▾' : '▸'} ${thread.messages[0]?.body.slice(0, 100) ?? '(no message)'}`,
+          cls: 'md-collab-thread-toggle md-collab-focus-visible',
+        });
+        toggle.setAttr('aria-expanded', isExpanded ? 'true' : 'false');
+        toggle.setAttr('aria-label', `Toggle thread ${thread.thread_id}`);
+        toggle.onclick = () => this.toggleExpanded(thread.thread_id);
 
-      const actions = card.createDiv({ cls: 'md-collab-thread-actions' });
-      const mkButton = (label: string, onClick: () => void, ariaLabel: string): void => {
-        const button = actions.createEl('button', { text: label, cls: 'md-collab-button md-collab-focus-visible' });
-        button.setAttr('aria-label', ariaLabel);
-        button.onclick = onClick;
-      };
+        heading.createEl('small', { text: ` ${thread.status.toUpperCase()} · ${thread.messages.length} message(s)` });
 
-      mkButton('Reply', () => this.safeMutate({ kind: 'reply', threadId: thread.thread_id, body: 'Reply from thread panel' }, 'Reply added'), `Reply to thread ${thread.thread_id}`);
-      mkButton(thread.status === 'open' ? 'Resolve' : 'Reopen', () => this.safeMutate({ kind: thread.status === 'open' ? 'resolve' : 'reopen', threadId: thread.thread_id }, 'Thread updated'), `${thread.status === 'open' ? 'Resolve' : 'Reopen'} thread ${thread.thread_id}`);
-      mkButton('Suggest from selection', () => this.suggestFromSelection(thread.thread_id), `Suggest from selected text for thread ${thread.thread_id}`);
-      mkButton('Jump to anchor', () => this.jumpToAnchor(thread.thread_id), `Jump to anchor for thread ${thread.thread_id}`);
+        if (!isExpanded) continue;
 
-      const messages = card.createDiv({ cls: 'md-collab-thread-messages' });
-      for (const message of thread.messages) {
-        const bubble = messages.createDiv({ cls: 'md-collab-message-bubble' });
-        bubble.setAttr('tabindex', '0');
-        bubble.addClass('md-collab-focus-visible');
-        bubble.createEl('strong', { text: message.author.author_label || message.author.author_id });
-        bubble.createEl('small', { text: ` · ${new Date(message.created_at).toLocaleString()}` });
-        bubble.createEl('p', { text: message.body });
+        const actions = card.createDiv({ cls: 'md-collab-thread-actions' });
+        const mkButton = (labelText: string, onClick: () => void, ariaLabel: string): void => {
+          const button = actions.createEl('button', { text: labelText, cls: 'md-collab-button md-collab-focus-visible' });
+          button.setAttr('aria-label', ariaLabel);
+          button.onclick = onClick;
+        };
+
+        mkButton('Reply', () => this.safeMutate({ kind: 'reply', threadId: thread.thread_id, body: 'Reply from thread panel' }, 'Reply added'), `Reply to thread ${thread.thread_id}`);
+        mkButton(thread.status === 'open' ? 'Resolve' : 'Reopen', () => this.safeMutate({ kind: thread.status === 'open' ? 'resolve' : 'reopen', threadId: thread.thread_id }, 'Thread updated'), `${thread.status === 'open' ? 'Resolve' : 'Reopen'} thread ${thread.thread_id}`);
+        mkButton('Suggest from selection', () => this.suggestFromSelection(thread.thread_id), `Suggest from selected text for thread ${thread.thread_id}`);
+        mkButton('Jump to anchor', () => this.jumpToAnchor(thread.thread_id), `Jump to anchor for thread ${thread.thread_id}`);
+
+        const messages = card.createDiv({ cls: 'md-collab-thread-messages' });
+        for (const message of thread.messages) {
+          const bubble = messages.createDiv({ cls: 'md-collab-message-bubble' });
+          bubble.setAttr('tabindex', '0');
+          bubble.addClass('md-collab-focus-visible');
+          bubble.createEl('strong', { text: message.author.author_label || message.author.author_id });
+          bubble.createEl('small', { text: ` · ${new Date(message.created_at).toLocaleString()}` });
+          bubble.createEl('p', { text: message.body });
+        }
+
+        const suggestions = card.createDiv({ cls: 'md-collab-thread-suggestions' });
+        suggestions.createEl('p', { text: 'Suggestions', cls: 'md-collab-state-label' });
+        for (const suggestion of thread.suggestions ?? []) {
+          const suggestionCard = suggestions.createDiv({ cls: 'md-collab-suggestion-card' });
+          suggestionCard.setAttr('tabindex', '0');
+          suggestionCard.addClass('md-collab-focus-visible');
+          suggestionCard.createEl('p', { text: `Status: ${suggestion.status}` });
+          suggestionCard.createEl('code', { text: suggestion.proposed_edit.replacement_text });
+
+          const suggestionActions = suggestionCard.createDiv({ cls: 'md-collab-suggestion-actions' });
+          const applyBtn = suggestionActions.createEl('button', { text: 'Apply', cls: 'md-collab-button md-collab-focus-visible' });
+          applyBtn.setAttr('aria-label', `Apply suggestion ${suggestion.suggestion_id}`);
+          applyBtn.onclick = () =>
+            this.safeMutate(
+              { kind: 'apply-suggestion', threadId: thread.thread_id, suggestionId: suggestion.suggestion_id, beforeText: thread.anchor.fallback.quote || '' },
+              'Suggestion apply attempted',
+            );
+
+          const rejectBtn = suggestionActions.createEl('button', { text: 'Reject', cls: 'md-collab-button md-collab-focus-visible' });
+          rejectBtn.setAttr('aria-label', `Reject suggestion ${suggestion.suggestion_id}`);
+          rejectBtn.onclick = () => this.safeMutate({ kind: 'reject-suggestion', threadId: thread.thread_id, suggestionId: suggestion.suggestion_id }, 'Suggestion rejected');
+
+          const baseContextBtn = suggestionActions.createEl('button', { text: 'View base context', cls: 'md-collab-button md-collab-focus-visible' });
+          baseContextBtn.setAttr('aria-label', `View base context for suggestion ${suggestion.suggestion_id}`);
+          baseContextBtn.onclick = () => new Notice(`Base context hash: ${suggestion.proposed_edit.before_text_hash}`);
+        }
       }
+    };
 
-      const suggestions = card.createDiv({ cls: 'md-collab-thread-suggestions' });
-      suggestions.createEl('p', { text: 'Suggestions', cls: 'md-collab-state-label' });
-      for (const suggestion of thread.suggestions ?? []) {
-        const suggestionCard = suggestions.createDiv({ cls: 'md-collab-suggestion-card' });
-        suggestionCard.setAttr('tabindex', '0');
-        suggestionCard.addClass('md-collab-focus-visible');
-        suggestionCard.createEl('p', { text: `Status: ${suggestion.status}` });
-        suggestionCard.createEl('code', { text: suggestion.proposed_edit.replacement_text });
-
-        const suggestionActions = suggestionCard.createDiv({ cls: 'md-collab-suggestion-actions' });
-        const applyBtn = suggestionActions.createEl('button', { text: 'Apply', cls: 'md-collab-button md-collab-focus-visible' });
-        applyBtn.setAttr('aria-label', `Apply suggestion ${suggestion.suggestion_id}`);
-        applyBtn.onclick = () =>
-          this.safeMutate(
-            { kind: 'apply-suggestion', threadId: thread.thread_id, suggestionId: suggestion.suggestion_id, beforeText: thread.anchor.fallback.quote || '' },
-            'Suggestion apply attempted',
-          );
-
-        const rejectBtn = suggestionActions.createEl('button', { text: 'Reject', cls: 'md-collab-button md-collab-focus-visible' });
-        rejectBtn.setAttr('aria-label', `Reject suggestion ${suggestion.suggestion_id}`);
-        rejectBtn.onclick = () => this.safeMutate({ kind: 'reject-suggestion', threadId: thread.thread_id, suggestionId: suggestion.suggestion_id }, 'Suggestion rejected');
-
-        const baseContextBtn = suggestionActions.createEl('button', { text: 'View base context', cls: 'md-collab-button md-collab-focus-visible' });
-        baseContextBtn.setAttr('aria-label', `View base context for suggestion ${suggestion.suggestion_id}`);
-        baseContextBtn.onclick = () => new Notice(`Base context hash: ${suggestion.proposed_edit.before_text_hash}`);
-      }
-    }
+    renderThreadGroup('Open', 'open');
+    renderThreadGroup('Resolved', 'resolved');
   }
 }
