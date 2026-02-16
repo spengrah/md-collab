@@ -73,6 +73,21 @@ const sampleState = (): DocumentThreadState => ({
               replacement_text: 'replacement',
             },
           },
+          {
+            suggestion_id: 's2',
+            status: 'applied',
+            created_at: '2026-01-01T02:00:00.000Z',
+            updated_at: '2026-01-01T03:00:00.000Z',
+            proposed_edit: {
+              anchor: {
+                anchor_confidence: 'high',
+                primary: { start: { line: 2, column: 1 }, end: { line: 2, column: 5 } },
+                fallback: { quote: 'bye', prefix: '', suffix: '' },
+              },
+              before_text_hash: 'sha256:x',
+              replacement_text: 'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9',
+            },
+          },
         ],
       },
     ],
@@ -92,7 +107,10 @@ describe('chat panel view-model', () => {
     expect(vm.groups.open[0].canReopen).toBe(false);
     expect(vm.groups.resolved[0].canResolve).toBe(false);
     expect(vm.groups.resolved[0].canReopen).toBe(true);
+    expect(vm.groups.resolved[0].suggestions).toHaveLength(1);
     expect(vm.groups.resolved[0].suggestions[0].status).toBe('proposed');
+    expect(vm.groups.resolved[0].suggestions[0].lines[0].label).toBe('Original');
+    expect(vm.groups.resolved[0].suggestions[0].lines[1].label).toBe('Suggested');
     expect(vm.groups.resolved[0].anchorConfidence).toBe('broken');
 
     expect(vm.ui.expandedThreadIds).toContain('t-open');
@@ -109,5 +127,17 @@ describe('chat panel view-model', () => {
     expect(vm.groups.open).toHaveLength(0);
     expect(vm.groups.resolved).toHaveLength(1);
     expect(vm.groups.resolved[0].threadId).toBe('t-resolved');
+    expect(vm.groups.resolved[0].suggestions).toHaveLength(1);
+  });
+
+  it('shows non-proposed suggestions only when suggestionState=all and marks long diffs collapsed', () => {
+    const ui = defaultChatPanelUiState();
+    ui.filters.status = 'resolved';
+    ui.filters.suggestionState = 'all';
+    const vm = toChatPanelViewModel(sampleState(), ui)!;
+    expect(vm.groups.resolved[0].suggestions).toHaveLength(2);
+    const applied = vm.groups.resolved[0].suggestions.find((s) => s.suggestionId === 's2');
+    expect(applied?.isLongDiff).toBe(true);
+    expect(applied?.collapsedByDefault).toBe(true);
   });
 });

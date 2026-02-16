@@ -38,6 +38,7 @@ interface CommandDispatcher {
 interface WebviewIntentMessage {
   type: 'intent';
   intent: ChatIntent;
+  requestId?: string;
   threadId?: string;
   suggestionId?: string;
   body?: string;
@@ -94,7 +95,8 @@ const isSetFiltersMessage = (message: unknown): message is WebviewSetFiltersMess
     typeof candidate.filters === 'object' &&
     ['all', 'open', 'resolved'].includes((candidate.filters as { status?: string }).status ?? '') &&
     ['all', 'mine'].includes((candidate.filters as { ownership?: string }).ownership ?? '') &&
-    typeof (candidate.filters as { hasSuggestions?: unknown }).hasSuggestions === 'boolean'
+    typeof (candidate.filters as { hasSuggestions?: unknown }).hasSuggestions === 'boolean' &&
+    ['proposedOnly', 'all'].includes((candidate.filters as { suggestionState?: string }).suggestionState ?? '')
   );
 };
 
@@ -180,6 +182,18 @@ button:focus, .threadHeader:focus, select:focus, input:focus { outline: 1px soli
 .bannerActions { display: flex; flex-wrap: wrap; gap: 6px; }
 .checkboxWrap { display: inline-flex; align-items: center; gap: 4px; }
 .empty { opacity: 0.8; }
+.composerWrap { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.composer { min-height: 56px; resize: vertical; border: 1px solid var(--vscode-input-border); border-radius: 6px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); padding: 6px; }
+.inlineError { border: 1px solid var(--vscode-inputValidation-errorBorder); background: var(--vscode-inputValidation-errorBackground); color: var(--vscode-inputValidation-errorForeground); padding: 8px; border-radius: 6px; display: flex; gap: 8px; align-items: center; }
+.bubble.pending { opacity: 0.85; border-style: dashed; }
+.diffWrap { display: flex; flex-direction: column; gap: 6px; }
+.diffLine { display: flex; gap: 6px; border-radius: 6px; padding: 4px 6px; }
+.diffLine.before { background: color-mix(in srgb, var(--vscode-editorError-foreground) 12%, transparent); }
+.diffLine.after { background: color-mix(in srgb, var(--vscode-editorInfo-foreground) 12%, transparent); }
+.diffLabel { width: 12px; font-weight: 700; }
+.diffBody { white-space: pre-wrap; word-break: break-word; }
+.token.changed { text-decoration: underline; text-decoration-thickness: 2px; }
+.diffCollapsed { opacity: 0.85; font-style: italic; }
 </style>
 </head>
 <body>
@@ -235,14 +249,36 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
       const args = buildIntentDispatchArgs(message);
       try {
         await this.dispatch(command, ...args);
+        if (message.requestId) {
+          void webviewView.webview.postMessage({ type: 'intentResult', requestId: message.requestId, ok: true });
+        }
       } catch (err) {
         const text = err instanceof Error ? err.message : String(err);
-        if (text.toLowerCase().includes('sidecar') && text.toLowerCase().includes('conflict')) {
-          this.banner = {
-            kind: 'warning',
-            message: 'Sidecar conflict detected. Reload sidecar and retry.',
-            actions: [{ label: 'Reload Sidecar', intent: 'reloadSidecar' }],
-          };
+        const lowered = text.toLowerCase();
+        if (lowered.includes('sidecar') && lowered.includes('conflict')) {
+          try {
+            await this.dispatch(chatIntentToCommand.reloadSidecar);
+            await this.dispatch(command, ...args);
+            if (message.requestId) {
+              void webviewView.webview.postMessage({ type: 'intentResult', requestId: message.requestId, ok: true, retried: true });
+            }
+            return;
+          } catch {
+            this.banner = {
+              kind: 'warning',
+              message: 'Sidecar conflict detected. Reload sidecar and retry.',
+              actions: [{ label: 'Reload Sidecar', intent: 'reloadSidecar' }],
+            };
+            if (message.requestId) {
+              void webviewView.webview.postMessage({ type: 'intentResult', requestId: message.requestId, ok: false, kind: 'conflict' });
+            }
+            this.renderNow();
+            return;
+          }
+        }
+
+        if (message.requestId) {
+          void webviewView.webview.postMessage({ type: 'intentResult', requestId: message.requestId, ok: false, kind: 'error', message: text });
         }
         this.renderNow();
       }

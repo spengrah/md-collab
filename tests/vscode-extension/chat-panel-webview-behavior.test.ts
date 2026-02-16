@@ -54,13 +54,16 @@ describe('chat panel webview behavior', () => {
     expect(patch).toMatchObject({ mode: 'patchThread', group: 'open', threadId: 't1' });
   });
 
-  it('exposes filter controls, conflict banner action, and aria labels in client script', () => {
+  it('exposes filter controls, inline composers, optimistic state, and aria labels in client script', () => {
     expect(__testOnlyClientScript).toContain("type: 'setFilters'");
     expect(__testOnlyClientScript).toContain('bannerActions');
     expect(__testOnlyClientScript).toContain('aria-label');
     expect(__testOnlyClientScript).toContain('Suggestion status');
     expect(__testOnlyClientScript).toContain('Add comment from selection');
-    expect(__testOnlyClientScript).toContain("window.prompt('Reply text')");
+    expect(__testOnlyClientScript).toContain('metaKey || event.ctrlKey');
+    expect(__testOnlyClientScript).toContain('pendingByRequestId');
+    expect(__testOnlyClientScript).toContain("type === 'intentResult'");
+    expect(__testOnlyClientScript).toContain('inlineErrorByThreadId');
     expect(__testOnlyClientScript).toContain("Thread panel failed to render. Try reloading the window.");
     expect(__testOnlyClientScript).toContain("window.addEventListener('error'");
     expect(__testOnlyClientScript).toContain("window.addEventListener('unhandledrejection'");

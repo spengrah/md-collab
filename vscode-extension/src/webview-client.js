@@ -1,5 +1,11 @@
 const vscode = acquireVsCodeApi();
+const persisted = vscode.getState() || {};
 let vm;
+let drafts = persisted.drafts || {};
+let collapsedSuggestionById = persisted.collapsedSuggestionById || {};
+let pendingByRequestId = persisted.pendingByRequestId || {};
+let inlineErrorByThreadId = persisted.inlineErrorByThreadId || {};
+
 const root = document.getElementById('root');
 const toolbar = document.getElementById('toolbar');
 const banner = document.getElementById('banner');
@@ -11,6 +17,11 @@ const el = (tag, className, text) => {
   if (text !== undefined) node.textContent = text;
   return node;
 };
+
+const persistUi = () => vscode.setState({ drafts, collapsedSuggestionById, pendingByRequestId, inlineErrorByThreadId });
+const requestId = () => `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const threadDraftKey = (threadId) => `reply:${threadId}`;
+const addCommentDraftKey = 'comment:new';
 
 const replaceLoadingWithError = (message) => {
   if (!root) return;
@@ -27,7 +38,8 @@ const guard = (fn, fallbackMessage) => {
   }
 };
 
-const postIntent = (intent, threadId, suggestionId, body) => vscode.postMessage({ type: 'intent', intent, threadId, suggestionId, body });
+const postIntent = (intent, threadId, suggestionId, body, reqId) =>
+  vscode.postMessage({ type: 'intent', intent, threadId, suggestionId, body, requestId: reqId });
 const postUi = (type, threadId) => vscode.postMessage({ type, threadId });
 
 const makeButton = (label, intent, threadId, suggestionId, secondary, ariaLabel) => {
@@ -36,6 +48,22 @@ const makeButton = (label, intent, threadId, suggestionId, secondary, ariaLabel)
   b.setAttribute('aria-label', ariaLabel || label);
   b.addEventListener('click', () => postIntent(intent, threadId, suggestionId));
   return b;
+};
+
+const diffToken = (token) => {
+  const span = el('span', token.changed ? 'token changed' : 'token', token.text);
+  if (token.changed) span.setAttribute('aria-label', 'changed text');
+  return span;
+};
+
+const diffLine = (line) => {
+  const row = el('div', `diffLine ${line.kind}`);
+  row.appendChild(el('span', 'diffLabel', line.kind === 'before' ? '−' : '+'));
+  const body = el('span', 'diffBody');
+  body.appendChild(el('strong', 'diffHumanLabel', `${line.label}: `));
+  line.tokens.forEach((token) => body.appendChild(diffToken(token)));
+  row.appendChild(body);
+  return row;
 };
 
 const renderBanner = (payload) => {
@@ -52,6 +80,28 @@ const renderBanner = (payload) => {
     actions.appendChild(makeButton(action.label, action.intent, undefined, undefined, true, action.label));
   });
   banner.appendChild(actions);
+};
+
+const submitComposer = ({ intent, threadId, body, draftKey }) => {
+  const trimmed = body.trim();
+  if (!trimmed) return;
+  inlineErrorByThreadId[threadId || 'root'] = '';
+  const reqId = requestId();
+  pendingByRequestId[reqId] = { threadId, body: trimmed, intent, ts: new Date().toISOString() };
+  postIntent(intent, threadId, undefined, trimmed, reqId);
+  drafts[draftKey] = '';
+  if (threadId) postUi('setActiveThread', threadId);
+  persistUi();
+  render();
+};
+
+const attachComposerKeybind = (textarea, onSubmit) => {
+  textarea.addEventListener('keydown', (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      onSubmit();
+    }
+  });
 };
 
 const renderToolbar = () => {
@@ -81,33 +131,61 @@ const renderToolbar = () => {
   hasSuggestionsWrap.appendChild(hasSuggestions);
   hasSuggestionsWrap.appendChild(el('span', '', 'With suggestions'));
 
+  const suggestionStateWrap = el('label', 'checkboxWrap');
+  const suggestionState = el('input');
+  suggestionState.type = 'checkbox';
+  suggestionState.checked = vm.ui.filters.suggestionState === 'all';
+  suggestionState.setAttribute('aria-label', 'Show applied and rejected suggestions');
+  suggestionStateWrap.appendChild(suggestionState);
+  suggestionStateWrap.appendChild(el('span', '', 'Show applied/rejected'));
+
   const updateFilters = () => vscode.postMessage({
     type: 'setFilters',
     filters: {
       status: status.value,
       ownership: owner.value,
       hasSuggestions: hasSuggestions.checked,
+      suggestionState: suggestionState.checked ? 'all' : 'proposedOnly',
     },
   });
   status.addEventListener('change', updateFilters);
   owner.addEventListener('change', updateFilters);
   hasSuggestions.addEventListener('change', updateFilters);
+  suggestionState.addEventListener('change', updateFilters);
 
-  const addComment = el('button', '', 'Add comment from selection');
-  addComment.type = 'button';
-  addComment.setAttribute('aria-label', 'Add comment from current selection');
-  addComment.addEventListener('click', () => {
-    const body = window.prompt('Comment text');
-    if (body === null) return;
-    const trimmed = body.trim();
-    if (!trimmed) return;
-    postIntent('addComment', undefined, undefined, trimmed);
+  const addCommentWrap = el('div', 'composerWrap');
+  const addCommentBody = el('textarea', 'composer');
+  addCommentBody.placeholder = 'Add comment from current selection…';
+  addCommentBody.value = drafts[addCommentDraftKey] || '';
+  addCommentBody.setAttribute('aria-label', 'Add comment from current selection text');
+  addCommentBody.addEventListener('input', () => {
+    drafts[addCommentDraftKey] = addCommentBody.value;
+    persistUi();
   });
+
+  const addCommentSubmit = el('button', '', 'Add comment from selection');
+  addCommentSubmit.type = 'button';
+  addCommentSubmit.setAttribute('aria-label', 'Add comment from current selection');
+  const onSubmitComment = () => submitComposer({ intent: 'addComment', body: addCommentBody.value, draftKey: addCommentDraftKey });
+  addCommentSubmit.addEventListener('click', onSubmitComment);
+  attachComposerKeybind(addCommentBody, onSubmitComment);
+
+  addCommentWrap.appendChild(addCommentBody);
+  addCommentWrap.appendChild(addCommentSubmit);
 
   toolbar.appendChild(status);
   toolbar.appendChild(owner);
   toolbar.appendChild(hasSuggestionsWrap);
-  toolbar.appendChild(addComment);
+  toolbar.appendChild(suggestionStateWrap);
+  toolbar.appendChild(addCommentWrap);
+};
+
+const optimisticMessageBubble = (pending) => {
+  const bubble = el('article', 'bubble pending');
+  bubble.setAttribute('role', 'article');
+  bubble.appendChild(el('div', 'bubbleHead', 'You · sending…'));
+  bubble.appendChild(el('div', 'bubbleBody', pending.body));
+  return bubble;
 };
 
 const renderThread = (thread) => {
@@ -141,17 +219,6 @@ const renderThread = (thread) => {
   if (expanded) {
     const body = el('div', 'threadBody');
     const actions = el('div', 'actions');
-    const reply = el('button', '', 'Reply');
-    reply.type = 'button';
-    reply.setAttribute('aria-label', 'Reply to thread');
-    reply.addEventListener('click', () => {
-      const body = window.prompt('Reply text');
-      if (body === null) return;
-      const trimmed = body.trim();
-      if (!trimmed) return;
-      postIntent('reply', thread.threadId, undefined, trimmed);
-    });
-    actions.appendChild(reply);
     if (thread.canResolve) actions.appendChild(makeButton('Resolve', 'resolve', thread.threadId, undefined, true, 'Resolve thread'));
     if (thread.canReopen) actions.appendChild(makeButton('Reopen', 'reopen', thread.threadId, undefined, true, 'Reopen thread'));
     actions.appendChild(makeButton('Suggest from Selection', 'suggestFromSelection', thread.threadId, undefined, false, 'Suggest from selection'));
@@ -159,11 +226,15 @@ const renderThread = (thread) => {
     if (thread.anchorConfidence === 'broken') {
       actions.appendChild(makeButton('Relink anchor', 'relinkAnchor', thread.threadId, undefined, true, 'Relink anchor'));
     }
-    if (thread.suggestions.length > 0) {
-      const latestSuggestionId = thread.suggestions[thread.suggestions.length - 1].suggestionId;
-      actions.appendChild(makeButton('View base version', 'viewBaseVersion', thread.threadId, latestSuggestionId, true, 'View base version context'));
-    }
     body.appendChild(actions);
+
+    const inlineError = inlineErrorByThreadId[thread.threadId];
+    if (inlineError) {
+      const errorRow = el('div', 'inlineError', inlineError);
+      const reload = makeButton('Reload sidecar', 'reloadSidecar', undefined, undefined, true, 'Reload sidecar');
+      errorRow.appendChild(reload);
+      body.appendChild(errorRow);
+    }
 
     thread.messages.forEach((message) => {
       const bubble = el('article', 'bubble ' + (message.kind === 'system' ? 'system' : ''));
@@ -173,20 +244,70 @@ const renderThread = (thread) => {
       body.appendChild(bubble);
     });
 
+    Object.values(pendingByRequestId)
+      .filter((pending) => pending.threadId === thread.threadId && pending.intent === 'reply')
+      .forEach((pending) => body.appendChild(optimisticMessageBubble(pending)));
+
     thread.suggestions.forEach((suggestion) => {
-      const card = el('section', 'suggestion');
-      card.setAttribute('aria-label', 'Suggestion status ' + suggestion.status);
-      card.appendChild(el('div', 'suggestionHead', '💡 Suggestion · ' + suggestion.status));
-      card.appendChild(el('div', '', suggestion.replacementPreview));
+      const sCard = el('section', 'suggestion');
+      sCard.setAttribute('aria-label', 'Suggestion status ' + suggestion.status);
+      sCard.appendChild(el('div', 'suggestionHead', '💡 Suggestion · ' + suggestion.status));
+
+      const diff = el('div', 'diffWrap');
+      const collapsed = collapsedSuggestionById[suggestion.suggestionId] ?? suggestion.collapsedByDefault;
+      if (suggestion.isLongDiff) {
+        const toggle = el('button', 'secondary', collapsed ? 'Expand diff' : 'Collapse diff');
+        toggle.type = 'button';
+        toggle.addEventListener('click', () => {
+          collapsedSuggestionById[suggestion.suggestionId] = !collapsed;
+          persistUi();
+          render();
+        });
+        diff.appendChild(toggle);
+      }
+      if (!collapsed) suggestion.lines.forEach((line) => diff.appendChild(diffLine(line)));
+      else diff.appendChild(el('div', 'diffCollapsed', 'Long diff collapsed. Expand to view changes.'));
+      sCard.appendChild(diff);
+
       const sa = el('div', 'actions');
       if (suggestion.status === 'proposed') {
         sa.appendChild(makeButton('Apply', 'applySuggestion', thread.threadId, suggestion.suggestionId, false, 'Apply suggestion'));
         sa.appendChild(makeButton('Reject', 'rejectSuggestion', thread.threadId, suggestion.suggestionId, true, 'Reject suggestion'));
       }
       sa.appendChild(makeButton('View base version', 'viewBaseVersion', thread.threadId, suggestion.suggestionId, true, 'View base version'));
-      card.appendChild(sa);
-      body.appendChild(card);
+      sCard.appendChild(sa);
+      body.appendChild(sCard);
     });
+
+    const composerWrap = el('div', 'composerWrap');
+    const replyBody = el('textarea', 'composer');
+    const key = threadDraftKey(thread.threadId);
+    replyBody.value = drafts[key] || '';
+    replyBody.placeholder = 'Reply…';
+    replyBody.setAttribute('aria-label', 'Reply to thread');
+    replyBody.addEventListener('input', () => {
+      drafts[key] = replyBody.value;
+      persistUi();
+    });
+
+    const submit = el('button', '', 'Reply');
+    submit.type = 'button';
+    const onSubmit = () => submitComposer({ intent: 'reply', threadId: thread.threadId, body: replyBody.value, draftKey: key });
+    submit.addEventListener('click', onSubmit);
+    attachComposerKeybind(replyBody, onSubmit);
+
+    const cancel = el('button', 'secondary', 'Cancel');
+    cancel.type = 'button';
+    cancel.addEventListener('click', () => {
+      drafts[key] = '';
+      persistUi();
+      render();
+    });
+
+    composerWrap.appendChild(replyBody);
+    composerWrap.appendChild(submit);
+    composerWrap.appendChild(cancel);
+    body.appendChild(composerWrap);
 
     card.appendChild(body);
   }
@@ -228,7 +349,24 @@ const patchThread = (groupName, threadId, thread) => {
 
 window.addEventListener('message', (event) => {
   guard(() => {
-    if (!event.data || event.data.type !== 'render') return;
+    if (!event.data) return;
+    if (event.data.type === 'intentResult') {
+      const pending = pendingByRequestId[event.data.requestId];
+      if (pending) {
+        if (!event.data.ok) {
+          inlineErrorByThreadId[pending.threadId || 'root'] =
+            event.data.kind === 'conflict'
+              ? 'Submit failed due to conflict after one auto-retry. Reload sidecar and retry.'
+              : (event.data.message || 'Action failed. Please retry.');
+          drafts[pending.threadId ? threadDraftKey(pending.threadId) : addCommentDraftKey] = pending.body;
+        }
+        delete pendingByRequestId[event.data.requestId];
+      }
+      persistUi();
+      render();
+      return;
+    }
+    if (event.data.type !== 'render') return;
     renderBanner(event.data.banner);
     if (event.data.mode === 'patchThread' && vm) {
       patchThread(event.data.group, event.data.threadId, event.data.thread);
