@@ -155,6 +155,15 @@ const findByText = (root: MockEl, tag: string, text: string): MockEl | null => {
   return null;
 };
 
+const findAllByAriaLabel = (root: MockEl, ariaLabel: string): MockEl[] => {
+  const matches: MockEl[] = [];
+  if (root.attrs.get('aria-label') === ariaLabel) matches.push(root);
+  for (const child of root.children) {
+    matches.push(...findAllByAriaLabel(child, ariaLabel));
+  }
+  return matches;
+};
+
 const createView = (): { view: ThreadPanelView; root: MockEl; editor: { focus: ReturnType<typeof vi.fn>; setCursor: ReturnType<typeof vi.fn> } } => {
   const root = new MockEl('div');
   const container = new MockEl('div');
@@ -201,6 +210,26 @@ describe('thread panel view integration', () => {
     const collapsedToggle = findByAriaLabel(root, 'Toggle thread t-open');
     expect(collapsedToggle?.attrs.get('aria-expanded')).toBe('false');
     expect(findByAriaLabel(root, 'Reply to thread t-open')).toBeNull();
+  });
+
+  it('renders explicit Open/Resolved DOM grouping with status-specific thread cards', () => {
+    const { view, root } = createView();
+    view.setDocument('note.md');
+
+    const openGroup = findByAriaLabel(root, 'Open threads');
+    const resolvedGroup = findByAriaLabel(root, 'Resolved threads');
+
+    expect(openGroup).not.toBeNull();
+    expect(resolvedGroup).not.toBeNull();
+    expect(root.children.indexOf(openGroup as MockEl)).toBeLessThan(root.children.indexOf(resolvedGroup as MockEl));
+
+    expect(findByText(openGroup as MockEl, 'p', 'Open (1)')).not.toBeNull();
+    expect(findByText(resolvedGroup as MockEl, 'p', 'Resolved (1)')).not.toBeNull();
+
+    expect(findAllByAriaLabel(openGroup as MockEl, 'Thread t-open open')).toHaveLength(1);
+    expect(findAllByAriaLabel(openGroup as MockEl, 'Thread t-resolved resolved')).toHaveLength(0);
+    expect(findAllByAriaLabel(resolvedGroup as MockEl, 'Thread t-resolved resolved')).toHaveLength(1);
+    expect(findAllByAriaLabel(resolvedGroup as MockEl, 'Thread t-open open')).toHaveLength(0);
   });
 
   it('dispatches per-thread actions (reply/resolve/reopen/suggest/jump)', () => {
