@@ -22,6 +22,7 @@ Reanchor tests use fixtures in `tests/fixtures/anchors/`. Each fixture directory
 
 - **Obsidian plugin** tests use a shim for the `obsidian` module (configured as an alias in `vitest.config.ts`)
 - **VS Code extension** tests mock `vendor.js` — when core exports change, update the mocks to match
+- **Both frontends**: Test mocks that mock vendored modules must re-export every function the real vendor provides. When adding new core exports, update all `vi.mock` calls for vendor modules or tests fail with 'No export is defined on the mock'
 
 ## Integration vs Unit Tests
 

@@ -1,0 +1,80 @@
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: gotcha
+summary: Vendored core requires explicit rebuild after changing core exports
+detail: |
+  When adding new exports to the core library (src/), frontends that vendor the core (vscode-extension/vendor/, obsidian-plugin/vendor/) won't pick up changes until you run `npm run precompile` in vscode-extension/ and the sync script for obsidian-plugin/. Test failures with 'No export defined' errors indicate stale vendor copies. This is easy to miss because the source changes compile fine - only the vendored copies lag behind.
+actionable: true
+
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: gotcha
+summary: Test mocks must mirror all exports from vendored modules
+detail: |
+  Vitest mocks in obsidian-plugin tests that mock '../../obsidian-plugin/src/vendor.js' must export every function the real vendor module exports. When adding new exports like `revisionTokenForPath`, both the real vendor copy AND the test mocks need updating, or tests fail with 'No export is defined on the mock'. Use `await import('../../dist/index.js')` in mocks to re-export real implementations.
+actionable: true
+
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: rule
+summary: Build artifacts (dist/, vendor/) should never be tracked in git
+detail: |
+  The project was tracking dist/ and vscode-extension/vendor/ in git, causing noise in every commit. These are generated artifacts that should be in .gitignore. Use `git rm --cached -r` to stop tracking them, then add to .gitignore. Also add obsidian-plugin/vendor/ to prevent future tracking. Build artifacts pollute diffs and create merge conflicts.
+actionable: true
+
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: distinction
+summary: guidance/ vs guides/ serve different purposes
+detail: |
+  guidance/ files are 1:1 paired with spec/ files, providing implementation-focused views of specifications. guides/ are standalone playbooks and development workflows. The former lives under .ai/spec/guidance/ as a complement to .ai/spec/spec/, while guides/ is a peer directory under .ai/ for cross-cutting practices. Don't confuse the two - guidance is spec-coupled, guides are independent.
+actionable: true
+
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: architecture
+summary: Pre-push hook reads .ai/pre-push.json for test config
+detail: |
+  The agentic-coding convention supports two approaches: (A) separate .ai/tests.json file with test commands, or (B) inline test config directly in .ai/pre-push.json. For projects with simple test setups (like md-collab with just 'npm run build' and 'npm test'), approach B is simpler - fewer files to maintain. The pre-push hook in scripts/hooks/pre-push parses this config and runs lint/test/learnings stages in parallel.
+actionable: true
+
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: gotcha
+summary: Symlink creation can fail silently if target directory already exists
+detail: |
+  When running `ln -s ../.ai/skills .claude/skills`, if .claude/skills already exists as a directory (created by mkdir -p earlier), the symlink gets created INSIDE that directory instead of replacing it. Always remove the target first with `rm -rf .claude/skills` before creating symlinks, or check if it exists and handle accordingly.
+actionable: true
+
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: rule
+summary: All sidecar mutations must go through src/operations.ts
+detail: |
+  This is an architectural invariant of md-collab. Frontends (VS Code, Obsidian) should never directly mutate sidecars - they call operation functions from the core library. When extracting shared code (like revision.ts), the operations module is the canonical source. This prevents divergence and keeps mutation logic testable in one place.
+actionable: false
+
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: architecture
+summary: Duplicate helper functions across frontends indicate missing core export
+detail: |
+  Finding the same helper (like hashText, revisionTokenForPath) duplicated in vscode-extension/src/model.ts, obsidian-plugin/src/service.ts, and src/cli.ts is a code smell. These should be extracted to a shared module in src/ and exported from the core library. The pattern: create src/revision.ts, export from src/index.ts, update imports in frontends, sync vendor copies.
+actionable: true
+
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: gotcha
+summary: git mv preserves history but requires vendor sync afterward
+detail: |
+  Using `git mv spec .ai/spec/spec` preserves file history when reorganizing directories. However, if any build processes or import paths referenced the old location, they break. After moving spec/, guidance/, research/ under .ai/, must update references in AGENTS.md, .ai/rules/code-review.md, and any import statements. No symlinks needed at old locations unless backwards compatibility required.
+actionable: true
+
+---
+timestamp: "2026-02-16T12:41:08.911368"
+type: documentation_gap
+summary: AGENTS.md must be updated when directory structure changes
+detail: |
+  AGENTS.md contains a directory tree showing project structure and where agents should look for specs/guidance. When moving spec/ and guidance/ to .ai/spec/, the tree in AGENTS.md still pointed to old locations. This would mislead future agents. The 'Context Discovery' section needs updating too. Strengthen AGENTS.md guidance: 'Keep this file in sync with actual directory structure - it's the agent's roadmap.'
+actionable: true
+

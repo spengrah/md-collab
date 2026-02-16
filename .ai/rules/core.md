@@ -27,7 +27,7 @@ These rules apply to all AI agents working on this project.
 ## Architectural Rules
 - Sidecar files (`*.comments.json`) never mutate the Markdown document
 - All sidecar mutations go through `src/operations.ts`
-- Frontends vendor the core library; changes to core exports require updating vendor copies
+- Frontends vendor the core library; changes to core exports require rebuilding (`npm run build`) and syncing vendor copies (`npm run precompile` in vscode-extension/, `node obsidian-plugin/scripts/sync-core.mjs`). Stale vendor copies cause 'No export defined' errors at runtime.
 
 ## Communication
 - Surface errors, never hide them

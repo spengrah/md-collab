@@ -49,7 +49,5 @@ Load context as needed, not upfront:
 
 ## Session Hints
 
-<!--
-Accumulate actionable learnings here.
-Example: "Always run `npm run precompile` in vscode-extension/ after changing core exports"
--->
+- Keep the directory tree above in sync with the actual structure — agents rely on it as their roadmap
+- After changing core exports: rebuild (`npm run build`), then sync vendors (`npm run precompile` in vscode-extension/, `node obsidian-plugin/scripts/sync-core.mjs`)
