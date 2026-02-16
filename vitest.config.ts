@@ -7,4 +7,12 @@ export default defineConfig({
       obsidian: fileURLToPath(new URL('./tests/obsidian-plugin/obsidian-shim.ts', import.meta.url)),
     },
   },
+  test: {
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'text-summary'],
+      include: ['src/**/*.ts', 'vscode-extension/src/**/*.ts', 'obsidian-plugin/src/**/*.ts'],
+      exclude: ['src/cli.ts'],
+    },
+  },
 });

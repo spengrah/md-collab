@@ -23,6 +23,7 @@
     "build": "node ./scripts/build-dist.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "accept": "npm run build && node ./scripts/acceptance-runner.mjs full",
     "accept:smoke": "npm run build && node ./scripts/acceptance-runner.mjs smoke",
     "accept:report": "node ./scripts/acceptance-runner.mjs report",
@@ -31,6 +32,7 @@
     "traceability:report": "node ./scripts/traceability.mjs report"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "typescript": "^5.9.2",
