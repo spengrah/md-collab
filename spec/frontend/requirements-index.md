@@ -13,3 +13,5 @@ Purpose: stable requirement IDs for PR-review-style interaction model and compos
 | MDC-FE-007 | `spec-for-ux-benchmark-comparison.md` | benchmark gap artifact maintenance checks |
 | MDC-FE-008 | `spec-for-thread-panel-chat-webview.md` | webview chat-bubble layout + thread grouping acceptance checks |
 | MDC-FE-009 | `spec-for-thread-panel-chat-webview.md` | webview intent->canonical command routing tests (no direct-write bypass) |
+| MDC-FE-010 | `spec-for-obsidian-plugin.md` | Obsidian panel command/intent parity checks + sidecar compatibility tests |
+| MDC-FE-011 | `spec-for-obsidian-plugin.md` | Source/Live Preview anchor behavior and recovery UX checks |

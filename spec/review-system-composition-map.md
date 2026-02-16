@@ -16,6 +16,7 @@ Define ownership boundaries and dependency order across backend/frontend review 
 4. **Interaction/rendering contract (frontend)**
    - `spec/frontend/spec-for-review-interaction-model.md`
    - `spec/frontend/spec-for-thread-panel-chat-webview.md`
+   - `spec/frontend/spec-for-obsidian-plugin.md`
 5. **Execution sequencing (frontend)**
    - `spec/frontend/pr-review-ux-implementation-checklist.md`
 

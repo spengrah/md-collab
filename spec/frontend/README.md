@@ -5,13 +5,15 @@ This folder contains active frontend UX specs plus archived baseline material.
 ## Active canonical frontend specs
 1. `spec-for-review-interaction-model.md`
 2. `spec-for-thread-panel-chat-webview.md`
-3. `spec-for-ux-benchmark-comparison.md`
-4. `pr-review-ux-implementation-checklist.md`
-5. `requirements-index.md`
+3. `spec-for-obsidian-plugin.md`
+4. `spec-for-ux-benchmark-comparison.md`
+5. `pr-review-ux-implementation-checklist.md`
+6. `requirements-index.md`
 
 ## Active canonical frontend guidance
 1. `../../guidance/frontend/guidance-for-review-interaction-model.md`
 2. `../../guidance/frontend/guidance-for-thread-panel-chat-webview.md`
+3. `../../guidance/frontend/guidance-for-obsidian-plugin.md`
 
 ## Backend-canonical docs used by frontend UX
 (These define shared/domain model semantics.)
