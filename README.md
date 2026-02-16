@@ -44,3 +44,4 @@ All mutation commands run through: read/validate → mutate via core ops → val
 - `npm run accept:smoke`
 - `npm run traceability:check`
 - `npm --prefix vscode-extension run compile`
+- `npm --prefix obsidian-plugin install && npm --prefix obsidian-plugin run build`

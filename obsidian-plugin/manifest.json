@@ -1,0 +1,9 @@
+{
+  "id": "md-collab",
+  "name": "md-collab",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Markdown sidecar collaboration threads for Obsidian",
+  "author": "md-collab",
+  "isDesktopOnly": true
+}

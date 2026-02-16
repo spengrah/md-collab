@@ -1,0 +1,17 @@
+{
+  "name": "md-collab-obsidian",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "prebuild": "npm --prefix .. run build && node ./scripts/sync-core.mjs",
+    "build": "tsc -p ./",
+    "watch": "tsc -w -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.24",
+    "obsidian": "^1.8.10",
+    "typescript": "^5.9.2"
+  }
+}
