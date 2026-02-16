@@ -66,6 +66,15 @@ export const primaryFromOffsets = (
   return { start, end, ...(docRevision ? { doc_revision: docRevision } : {}) };
 };
 
+/**
+ * Build an anchor for the selected range in `text`.
+ *
+ * Offsets use **exclusive-end** convention (like `String.slice`):
+ * - `startOffsetUtf16` — index of the first code unit in the selection.
+ * - `endOffsetUtf16` — index *past* the last code unit (i.e. `text.slice(start, end)`).
+ *
+ * The stored `primary.end.offset_utf16` is also exclusive.
+ */
 export const buildAnchor = (
   text: string,
   startOffsetUtf16: number,

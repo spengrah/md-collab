@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import {
   applySuggestion,
@@ -13,17 +12,18 @@ import {
   resolveThread,
   sidecarPathForDocument,
   writeSidecarFileAtomic,
+  revisionTokenForPath,
+  sameRevision,
+  emptySidecar,
+  hashText,
+  SidecarConflictError,
+  type SidecarRevisionToken,
   type Anchor,
   type Author,
   type Sidecar,
 } from './vendor.js';
 
-export interface SidecarRevisionToken {
-  exists: boolean;
-  mtimeMs: number | null;
-  size: number | null;
-  hash: string | null;
-}
+export { SidecarConflictError, type SidecarRevisionToken };
 
 export interface DocumentThreadState {
   documentPath: string;
@@ -32,44 +32,21 @@ export interface DocumentThreadState {
   revisionToken: SidecarRevisionToken;
 }
 
-export class SidecarConflictError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SidecarConflictError';
-  }
-}
-
-const revisionTokenForPath = (path: string): SidecarRevisionToken => {
-  try {
-    const stat = statSync(path);
-    const payload = readFileSync(path, 'utf8');
-    return {
-      exists: true,
-      mtimeMs: stat.mtimeMs,
-      size: stat.size,
-      hash: createHash('sha256').update(payload).digest('hex'),
-    };
-  } catch {
-    return { exists: false, mtimeMs: null, size: null, hash: null };
-  }
-};
-
-const sameRevision = (a: SidecarRevisionToken, b: SidecarRevisionToken): boolean =>
-  a.exists === b.exists && a.mtimeMs === b.mtimeMs && a.size === b.size && a.hash === b.hash;
-
 const asAuthor = (authorId: string, authorLabel: string): Author => ({ author_id: authorId, author_label: authorLabel, verified: null });
-const hashText = (value: string): string => `sha256:${createHash('sha256').update(value).digest('hex')}`;
 const now = (): string => new Date().toISOString();
-
-const emptySidecar = (docPath: string): Sidecar => ({ schema_version: '0.1.0', document: { path: docPath }, threads: [] });
 
 export const loadState = (documentPath: string): DocumentThreadState => {
   const sidecarPath = sidecarPathForDocument(documentPath);
   let sidecar: Sidecar;
   try {
     sidecar = readSidecarFile(sidecarPath);
-  } catch {
-    sidecar = emptySidecar(documentPath);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('ENOENT')) {
+      sidecar = emptySidecar(documentPath);
+    } else {
+      throw err;
+    }
   }
   return { documentPath, sidecarPath, sidecar, revisionToken: revisionTokenForPath(sidecarPath) };
 };

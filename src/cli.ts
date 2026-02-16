@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import {
   applyReanchor,
   applySuggestion,
@@ -18,6 +18,8 @@ import {
   sidecarPathForDocument,
   validateSidecarResult,
   writeSidecarFileAtomic,
+  hashText,
+  parseSidecar,
 } from './index.js';
 import type { Anchor, Author, RelevanceContext, Sidecar, Suggestion, Thread, TimelineKind } from './types.js';
 
@@ -121,7 +123,7 @@ const ok = (command: string, data: Record<string, unknown>, audit?: Record<strin
 
 const readFileUtf8 = (path: string): string => readFileSync(path, 'utf8');
 
-const revForBytes = (bytes: string): string => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+const revForBytes = hashText;
 
 const revForSidecarFile = (sidecarPath: string): string => revForBytes(readFileUtf8(sidecarPath));
 
@@ -288,6 +290,13 @@ const readSidecarOrThrow = (path: string): Sidecar => {
   return readSidecarFile(path);
 };
 
+const readSidecarBytesAndParse = (path: string): { sidecar: Sidecar; bytes: string } => {
+  if (!existsSync(path)) throw new MdCollabError('BAD_ARGS', `sidecar not found: ${path}`);
+  const bytes = readFileUtf8(path);
+  const sidecar = parseSidecar(bytes);
+  return { sidecar, bytes };
+};
+
 const applyMutation = (args: {
   command: string;
   flags: Map<string, string | boolean>;
@@ -299,8 +308,8 @@ const applyMutation = (args: {
   overrideChanged?: (before: Sidecar, after: Sidecar) => boolean;
   dataExtras?: Record<string, unknown>;
 }): CliRunResult => {
-  const sidecar = readSidecarOrThrow(args.sidecarPath);
-  const revBefore = revForSidecarFile(args.sidecarPath);
+  const { sidecar, bytes } = readSidecarBytesAndParse(args.sidecarPath);
+  const revBefore = revForBytes(bytes);
   guardRev(args.sidecarPath, args.flags, revBefore);
 
   const next = args.mutate(sidecar);
@@ -339,13 +348,11 @@ const applyMutation = (args: {
 const extractTextByAnchor = (docText: string, anchor: Anchor): { text: string | null; viable: boolean } => {
   const start = anchor.primary.start?.offset_utf16;
   const end = anchor.primary.end?.offset_utf16;
-  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < start || end >= docText.length) {
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < start || end > docText.length) {
     return { text: null, viable: false };
   }
-  return { text: docText.slice(start, end + 1), viable: true };
+  return { text: docText.slice(start, end), viable: true };
 };
-
-const hashText = (value: string): string => `sha256:${createHash('sha256').update(value).digest('hex')}`;
 
 export const runCli = (argv: string[], io: CliIo = defaultIo): CliRunResult => {
   const { positionals, flags } = parseArgs(argv);
@@ -550,7 +557,7 @@ export const runCli = (argv: string[], io: CliIo = defaultIo): CliRunResult => {
       const start = parseIntFlag(flags, 'start');
       const end = parseIntFlag(flags, 'end');
       const docText = readFileUtf8(docPath);
-      const quote = docText.slice(start, end + 1);
+      const quote = docText.slice(start, end);
       const beforeTextHash = asString(flags.get('before-text-hash')) ?? hashText(quote);
 
       return applyMutation({

@@ -17,6 +17,11 @@ vi.mock('../../obsidian-plugin/src/vendor.js', async () => {
     rejectSuggestion: core.rejectSuggestion,
     reopenThread: core.reopenThread,
     resolveThread: core.resolveThread,
+    revisionTokenForPath: core.revisionTokenForPath,
+    sameRevision: core.sameRevision,
+    emptySidecar: core.emptySidecar,
+    hashText: core.hashText,
+    SidecarConflictError: core.SidecarConflictError,
   };
 });
 

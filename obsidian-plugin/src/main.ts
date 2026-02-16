@@ -226,7 +226,7 @@ export default class MdCollabObsidianPlugin extends Plugin {
     for (const thread of state.sidecar.threads) {
       const suggestion = (thread.suggestions ?? []).find((s) => s.status === 'proposed');
       if (!suggestion) continue;
-      const beforeText = thread.anchor.fallback.quote || '';
+      const beforeText = suggestion.proposed_edit.anchor.fallback.quote || '';
       return { state, threadId: thread.thread_id, suggestionId: suggestion.suggestion_id, beforeText };
     }
     return null;

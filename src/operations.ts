@@ -1,7 +1,8 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { reanchor } from './reanchor.js';
 import { buildAnchor } from './anchor.js';
 import { error } from './errors.js';
+import { hashText } from './revision.js';
 import type {
   Author,
   CreateThreadInput,
@@ -22,8 +23,6 @@ import type {
 
 const clone = <T>(value: T): T => structuredClone(value);
 const nowUtc = () => new Date().toISOString();
-
-const hashText = (value: string) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
 
 const isValidAuthor = (author: Author | undefined): author is Author =>
   !!author &&
@@ -255,7 +254,7 @@ const setRelevance = (thread: Thread, state: RelevanceState, reason: RelevanceRe
 const hasDirectAnchorMatch = (thread: Thread, documentText?: string): boolean => {
   if (!documentText || !thread.anchor.primary.start || !thread.anchor.primary.end) return false;
   const start = thread.anchor.primary.start.offset_utf16;
-  const endExclusive = thread.anchor.primary.end.offset_utf16 + 1;
+  const endExclusive = thread.anchor.primary.end.offset_utf16;
   if (start < 0 || endExclusive < start || endExclusive > documentText.length) return false;
   return documentText.slice(start, endExclusive) === thread.anchor.fallback.quote;
 };

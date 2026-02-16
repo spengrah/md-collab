@@ -103,7 +103,7 @@ describe('agent-safe CLI', () => {
           anchor: {
             primary: {
               start: { line: 1, column: 1, offset_utf16: 0 },
-              end: { line: 1, column: 3, offset_utf16: 2 },
+              end: { line: 1, column: 4, offset_utf16: 3 },
             },
             fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
             anchor_confidence: 'high',
@@ -129,7 +129,7 @@ describe('agent-safe CLI', () => {
                 anchor: {
                   primary: {
                     start: { line: 1, column: 1, offset_utf16: 0 },
-                    end: { line: 1, column: 3, offset_utf16: 2 },
+                    end: { line: 1, column: 4, offset_utf16: 3 },
                   },
                   fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
                   anchor_confidence: 'high',
@@ -187,7 +187,7 @@ describe('agent-safe CLI', () => {
           anchor: {
             primary: {
               start: { line: 1, column: 1, offset_utf16: 0 },
-              end: { line: 1, column: 3, offset_utf16: 2 },
+              end: { line: 1, column: 4, offset_utf16: 3 },
             },
             fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
             anchor_confidence: 'high',
@@ -213,7 +213,7 @@ describe('agent-safe CLI', () => {
                 anchor: {
                   primary: {
                     start: { line: 1, column: 1, offset_utf16: 0 },
-                    end: { line: 1, column: 3, offset_utf16: 2 },
+                    end: { line: 1, column: 4, offset_utf16: 3 },
                   },
                   fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
                   anchor_confidence: 'high',
@@ -312,7 +312,7 @@ describe('agent-safe CLI', () => {
           anchor: {
             primary: {
               start: { line: 1, column: 1, offset_utf16: 0 },
-              end: { line: 1, column: 3, offset_utf16: 2 },
+              end: { line: 1, column: 4, offset_utf16: 3 },
             },
             fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
             anchor_confidence: 'high',
@@ -338,7 +338,7 @@ describe('agent-safe CLI', () => {
                 anchor: {
                   primary: {
                     start: { line: 1, column: 1, offset_utf16: 0 },
-                    end: { line: 1, column: 3, offset_utf16: 2 },
+                    end: { line: 1, column: 4, offset_utf16: 3 },
                   },
                   fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
                   anchor_confidence: 'high',
@@ -380,7 +380,7 @@ describe('agent-safe CLI', () => {
           anchor: {
             primary: {
               start: { line: 1, column: 1, offset_utf16: 0 },
-              end: { line: 1, column: 3, offset_utf16: 2 },
+              end: { line: 1, column: 4, offset_utf16: 3 },
             },
             fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
             anchor_confidence: 'high',
@@ -456,7 +456,7 @@ describe('agent-safe CLI', () => {
           anchor: {
             primary: {
               start: { line: 1, column: 1, offset_utf16: 0 },
-              end: { line: 1, column: 3, offset_utf16: 2 },
+              end: { line: 1, column: 4, offset_utf16: 3 },
             },
             fallback: { quote: 'abc', prefix: '', suffix: '', quote_hash: 'sha256:q', context_hash: 'sha256:c' },
             anchor_confidence: 'high',

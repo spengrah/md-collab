@@ -5,5 +5,6 @@ export * from './schema.js';
 export * from './serializer.js';
 export * from './operations.js';
 export * from './reanchor.js';
+export * from './revision.js';
 export * from './sidecar-file.js';
 export * from './cli.js';

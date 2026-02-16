@@ -3,7 +3,14 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../obsidian-plugin/src/vendor.js', () => ({
+vi.mock('../../obsidian-plugin/src/vendor.js', async () => {
+  const core = await import('../../dist/index.js');
+  return {
+  revisionTokenForPath: core.revisionTokenForPath,
+  sameRevision: core.sameRevision,
+  emptySidecar: core.emptySidecar,
+  hashText: core.hashText,
+  SidecarConflictError: core.SidecarConflictError,
   sidecarPathForDocument: (docPath: string) => docPath.replace(/\.md$/i, '.comments.json'),
   readSidecarFile: () => ({
     schema_version: '0.1.0',
@@ -45,7 +52,8 @@ vi.mock('../../obsidian-plugin/src/vendor.js', () => ({
   rejectSuggestion: vi.fn(),
   reopenThread: vi.fn(),
   resolveThread: vi.fn(),
-}));
+};
+});
 
 import { SidecarConflictError, addReply, loadState } from '../../obsidian-plugin/src/service.js';
 

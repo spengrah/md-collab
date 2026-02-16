@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, relative } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import {
   applyReanchor,
   createThread,
@@ -17,6 +17,12 @@ import {
   proposeSuggestion,
   applySuggestion,
   rejectSuggestion,
+  revisionTokenForPath,
+  sameRevision,
+  emptySidecar,
+  hashText,
+  SidecarConflictError,
+  type SidecarRevisionToken,
   type AnchorConfidence,
   type Anchor,
   type Author,
@@ -24,12 +30,7 @@ import {
   type TimelineKind,
 } from '../vendor/core/index.js';
 
-export interface SidecarRevisionToken {
-  exists: boolean;
-  mtimeMs: number | null;
-  size: number | null;
-  hash: string | null;
-}
+export { SidecarConflictError, type SidecarRevisionToken };
 
 export interface DocumentThreadState {
   documentPath: string;
@@ -57,48 +58,9 @@ export interface SuggestionBaseVersion {
   reason?: string;
 }
 
-export class SidecarConflictError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SidecarConflictError';
-  }
-}
-
 const now = () => new Date().toISOString();
 
-export const emptySidecarForDocument = (docPath: string): Sidecar => ({
-  schema_version: '0.1.0',
-  document: { path: docPath },
-  threads: [],
-});
-
-const revisionTokenForPath = (path: string): SidecarRevisionToken => {
-  try {
-    const stat = statSync(path);
-    const payload = readFileSync(path, 'utf8');
-    const hash = createHash('sha256').update(payload).digest('hex');
-    return {
-      exists: true,
-      mtimeMs: stat.mtimeMs,
-      size: stat.size,
-      hash,
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('ENOENT')) {
-      return {
-        exists: false,
-        mtimeMs: null,
-        size: null,
-        hash: null,
-      };
-    }
-    throw err;
-  }
-};
-
-const sameRevision = (a: SidecarRevisionToken, b: SidecarRevisionToken): boolean =>
-  a.exists === b.exists && a.mtimeMs === b.mtimeMs && a.size === b.size && a.hash === b.hash;
+export const emptySidecarForDocument = emptySidecar;
 
 export const loadStateForDocument = (docPath: string): DocumentThreadState => {
   const sidecarPath = sidecarPathForDocument(docPath);
@@ -183,8 +145,6 @@ export const invalidateRelevanceCache = (documentPath?: string): void => {
   lastHeadByDocument.delete(documentPath);
 };
 
-const hashText = (value: string) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
-
 const collectContext = (state: DocumentThreadState, config?: Config) => {
   const fileExists = existsSync(state.documentPath);
   const documentText = fileExists ? readFileSync(state.documentPath, 'utf8') : undefined;
@@ -203,7 +163,7 @@ const collectContext = (state: DocumentThreadState, config?: Config) => {
       headCommit = execSync('git rev-parse HEAD', { cwd, encoding: 'utf8' }).trim();
       const relPath = relative(cwd, state.documentPath).replace(/\\/g, '/');
       currentPath = relPath;
-      headBlobSha = execSync(`git rev-parse HEAD:${relPath}`, { cwd, encoding: 'utf8' }).trim();
+      headBlobSha = execFileSync('git', ['rev-parse', `HEAD:${relPath}`], { cwd, encoding: 'utf8' }).trim();
       gitAvailable = true;
     } catch {
       gitAvailable = false;
@@ -231,6 +191,15 @@ const evaluateRelevance = (state: DocumentThreadState, config?: Config): Sidecar
 
   const evaluated = evaluateSidecarRelevance(state.sidecar, collectContext(state, config));
   relevanceCache.set(key, structuredClone(evaluated));
+
+  // Evict oldest entry if cache exceeds 100 entries
+  if (relevanceCache.size > 100) {
+    const oldestKey = relevanceCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      relevanceCache.delete(oldestKey);
+    }
+  }
+
   return evaluated;
 };
 
@@ -473,7 +442,7 @@ export const getSuggestionBaseVersion = (
   if (tvc?.base_commit && tvc.file_path_at_create) {
     try {
       const cwd = dirname(state.documentPath);
-      const content = execSync(`git show ${tvc.base_commit}:${tvc.file_path_at_create}`, { cwd, encoding: 'utf8' });
+      const content = execFileSync('git', ['show', `${tvc.base_commit}:${tvc.file_path_at_create}`], { cwd, encoding: 'utf8' });
       return {
         source: 'git',
         title: `Base version (${tvc.base_commit.slice(0, 12)}:${tvc.file_path_at_create})`,

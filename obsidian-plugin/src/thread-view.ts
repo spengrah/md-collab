@@ -194,7 +194,7 @@ export class ThreadPanelView extends ItemView {
           applyBtn.setAttr('aria-label', `Apply suggestion ${suggestion.suggestion_id}`);
           applyBtn.onclick = () =>
             this.safeMutate(
-              { kind: 'apply-suggestion', threadId: thread.thread_id, suggestionId: suggestion.suggestion_id, beforeText: thread.anchor.fallback.quote || '' },
+              { kind: 'apply-suggestion', threadId: thread.thread_id, suggestionId: suggestion.suggestion_id, beforeText: suggestion.proposed_edit.anchor.fallback.quote || '' },
               'Suggestion apply attempted',
             );
 
