@@ -4,8 +4,12 @@ import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
 
-const REQ_FILES = ['spec/backend/requirements-index.md', 'spec/frontend/requirements-index.md'];
-const MAP_FILE = 'spec/quality/traceability-map.json';
+const REQ_FILES = [
+  '.ai/spec/spec/backend/requirements-index.md',
+  '.ai/spec/spec/frontend/requirements-index.md',
+  '.ai/spec/spec/cli/requirements-index.md',
+];
+const MAP_FILE = '.ai/spec/spec/quality/traceability-map.json';
 const ARTIFACT_JSON = 'artifacts/traceability/latest.json';
 const ARTIFACT_SUMMARY = 'artifacts/traceability/latest-summary.md';
 const EXECUTION_ARTIFACT_JSON = 'artifacts/traceability/latest-test-execution.json';

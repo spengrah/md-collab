@@ -134,6 +134,50 @@
     {
       "requirementId": "MDC-FE-011",
       "tests": ["tests/obsidian-plugin/thread-view.integration.test.ts", "tests/obsidian-plugin/thread-view.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-001",
+      "tests": ["tests/backend/cli.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-002",
+      "tests": ["tests/backend/cli.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-003",
+      "tests": ["tests/backend/cli.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-004",
+      "tests": ["tests/backend/cli.test.ts", "tests/backend/sidecar-file.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-005",
+      "tests": ["tests/backend/cli.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-006",
+      "tests": ["tests/backend/cli.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-007",
+      "tests": ["tests/backend/cli.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-008",
+      "tests": ["tests/backend/cli.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-009",
+      "tests": ["tests/backend/cli.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-010",
+      "tests": ["tests/backend/cli.test.ts"]
+    },
+    {
+      "requirementId": "MDC-CLI-011",
+      "tests": ["tests/backend/cli.test.ts"]
     }
   ]
 }
