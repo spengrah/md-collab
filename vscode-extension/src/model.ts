@@ -270,7 +270,7 @@ export const addReply = (state: DocumentThreadState, threadId: string, body: str
     timelineKind: config.timelineKind ?? 'workspace',
     workspaceSnapshotId: config.workspaceSnapshotId ?? ts,
   });
-  return persist({ ...state, sidecar: evaluateRelevance({ ...state, sidecar: nextSidecar }, config) });
+  return persist({ ...state, sidecar: nextSidecar });
 };
 
 export const resolve = (state: DocumentThreadState, threadId: string, config: Config): DocumentThreadState => {
@@ -280,7 +280,7 @@ export const resolve = (state: DocumentThreadState, threadId: string, config: Co
     actor: authorFromConfig(config),
     now: now(),
   });
-  return persist({ ...state, sidecar: evaluateRelevance({ ...state, sidecar: nextSidecar }, config) });
+  return persist({ ...state, sidecar: nextSidecar });
 };
 
 export const reopen = (state: DocumentThreadState, threadId: string, config: Config): DocumentThreadState => {
@@ -290,7 +290,7 @@ export const reopen = (state: DocumentThreadState, threadId: string, config: Con
     actor: authorFromConfig(config),
     now: now(),
   });
-  return persist({ ...state, sidecar: evaluateRelevance({ ...state, sidecar: nextSidecar }, config) });
+  return persist({ ...state, sidecar: nextSidecar });
 };
 
 export const reanchorAll = (state: DocumentThreadState, documentText: string, config?: Config): DocumentThreadState => {

@@ -269,6 +269,12 @@ export const evaluateThreadRelevance = (thread: Thread, context: RelevanceContex
   // 2) explicit reanchor stage
   let wasReanchored = false;
   if (!directMatch && context.documentText && context.fileExists !== false) {
+    // Skip expensive fuzzy reanchor for anchors already known to be broken —
+    // rerunning on the same document text produces the same broken result.
+    if (next.anchor.anchor_confidence === 'broken') {
+      setRelevance(next, 'orphaned', 'ANCHOR_NOT_FOUND', checkedAt, context.headCommit);
+      return next;
+    }
     const reanchorResult = reanchor(context.documentText, next.anchor);
     if (reanchorResult.start && reanchorResult.end) {
       next.anchor.primary.start = reanchorResult.start;

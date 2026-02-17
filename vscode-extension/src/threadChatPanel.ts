@@ -253,9 +253,9 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
       }
 
       if (!isIntent(message)) return;
-      // Detached: UI messages above return synchronously; intent handling is async
-      // but must not block subsequent message processing.
-      return this.handleIntent(webviewView, message);
+      // Fire-and-forget: must not return the promise, otherwise VS Code may
+      // await it and serialize subsequent messages behind a slow dispatch.
+      void this.handleIntent(webviewView, message);
     });
   }
 

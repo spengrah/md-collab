@@ -30,7 +30,9 @@ const setup = (dispatchImpl: (...args: unknown[]) => Promise<unknown>) => {
     posted,
     send: async (message: unknown) => {
       if (!inbound) throw new Error('inbound handler not initialized');
-      await inbound(message);
+      inbound(message);
+      // handleIntent is fire-and-forget; flush the microtask queue
+      await new Promise((resolve) => setTimeout(resolve, 10));
     },
   };
 };
