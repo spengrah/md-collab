@@ -407,6 +407,8 @@ window.addEventListener('message', (event) => {
   }, 'Thread panel failed to render. Try reloading the window.');
 });
 
+vscode.postMessage({ type: 'ready' });
+
 window.addEventListener('error', () => {
   replaceLoadingWithError('Thread panel failed to initialize. Try reloading the window.');
 });

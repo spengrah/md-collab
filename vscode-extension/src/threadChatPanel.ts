@@ -54,7 +54,11 @@ interface WebviewSetFiltersMessage {
   filters: ChatPanelUiState['filters'];
 }
 
-type WebviewInboundMessage = WebviewIntentMessage | WebviewUiMessage | WebviewSetFiltersMessage;
+interface WebviewReadyMessage {
+  type: 'ready';
+}
+
+type WebviewInboundMessage = WebviewIntentMessage | WebviewUiMessage | WebviewSetFiltersMessage | WebviewReadyMessage;
 
 interface ChatPanelBanner {
   kind: 'warning' | 'info';
@@ -224,6 +228,11 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = html(webviewView.webview);
 
     webviewView.webview.onDidReceiveMessage(async (message: WebviewInboundMessage) => {
+      if (message.type === 'ready') {
+        this.renderNow();
+        return;
+      }
+
       if (isUiMessage(message)) {
         if (message.type === 'toggleThread') {
           if (this.uiState.expandedThreadIds.has(message.threadId)) this.uiState.expandedThreadIds.delete(message.threadId);
@@ -292,8 +301,6 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
         this.renderNow();
       }
     });
-
-    this.renderNow();
   }
 
   updateState(state: DocumentThreadState | undefined) {
