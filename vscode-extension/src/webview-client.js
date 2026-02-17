@@ -335,7 +335,17 @@ const renderThread = (thread) => {
   return card;
 };
 
+const purgeStaleRequests = () => {
+  const cutoff = Date.now() - 15000;
+  for (const [reqId, entry] of Object.entries(pendingByRequestId)) {
+    if (new Date(entry.ts).getTime() < cutoff) delete pendingByRequestId[reqId];
+  }
+};
+
 const render = () => {
+  purgeStaleRequests();
+  const scrollEl = document.documentElement;
+  const scrollTop = scrollEl.scrollTop;
   clear(root);
   renderToolbar();
   if (!vm) {
@@ -355,6 +365,7 @@ const render = () => {
 
   root.appendChild(mkGroup('Open', vm.groups.open, 'open'));
   root.appendChild(mkGroup('Resolved', vm.groups.resolved, 'resolved'));
+  scrollEl.scrollTop = scrollTop;
 };
 
 const patchThread = (groupName, threadId, thread) => {
@@ -407,6 +418,8 @@ window.addEventListener('message', (event) => {
   }, 'Thread panel failed to render. Try reloading the window.');
 });
 
+purgeStaleRequests();
+persistUi();
 vscode.postMessage({ type: 'ready' });
 
 window.addEventListener('error', () => {
