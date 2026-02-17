@@ -229,7 +229,7 @@ should_skip_learnings() {
   # Check if ALL changed files are learnings application locations
   while IFS= read -r file; do
     case "$file" in
-      .ai/log/*|.ai/guides/*|.ai/patterns/*|.ai/rules/*) ;;  # Skip these
+      .ai/log/*|.ai/spec/*|.ai/guides/*|.ai/patterns/*|.ai/rules/*) ;;  # Skip these
       .claude/CLAUDE.md|CLAUDE.md|AGENTS.md) ;;              # Skip these
       *) return 1 ;;  # Found a file that might generate learnings
     esac

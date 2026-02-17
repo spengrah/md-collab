@@ -62,3 +62,27 @@ detail: |
   The ReanchorReasonCode type (exact_positional, diff_remapped, exact_nearby, exact_global, context_disambiguated, fuzzy_recovery, broken) provides transparency into how each anchor was positioned. These are essential for debugging reanchor behavior and building user trust — users can see exactly why an anchor was placed where it was. When adding new reanchor logic, always add a corresponding reason code.
 actionable: true
 
+---
+timestamp: "2026-02-17T00:36:08.714289"
+type: rule
+summary: Pre-push hook blocks for learning review — this is expected behavior, not an error
+detail: |
+  The pre-push hook extracts learnings and blocks the push to force review. When this happens, the agent should guide the user to run `/learnings --review-only` rather than treating it as a failed push. The workflow is: push blocked → review learnings → commit learnings → push again. This is intentional friction to ensure learnings are captured before they're lost.
+actionable: true
+
+---
+timestamp: "2026-02-17T00:36:08.714289"
+type: rule
+summary: When reviewing extracted learnings, classify by whether already captured in docs
+detail: |
+  Many extracted learnings may already be documented in specs/guidance from the same session that generated them. The review step should identify which learnings are already captured vs which represent new documentation gaps. In this session, 7 of 8 learnings were already in specs/guidance, and only 1 needed a clarification added. Don't blindly copy learnings into docs — check if they're redundant first.
+actionable: true
+
+---
+timestamp: "2026-02-17T00:36:08.714289"
+type: documentation_gap
+summary: Learnings skill instructions don't explain the pre-push integration
+detail: |
+  The `/learnings` skill documentation shows how to manually run extraction and review, but doesn't explain that extraction runs automatically via pre-push hook and blocks pushes. When the hook runs, users see an error-like message and may not know to run `/learnings --review-only`. The skill docs should add a section explaining: 'If you see pre-push blocked by learnings extraction, run `/learnings --review-only` to review and commit the extracted learnings, then push again.'
+actionable: true
+
