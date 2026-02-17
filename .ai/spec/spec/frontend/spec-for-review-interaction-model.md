@@ -85,6 +85,7 @@ Each suggestion must include:
 3. Overlay refresh should be incremental where feasible.
 4. Avoid full-doc recompute on cursor movement.
 5. Must remain responsive for >=2k-line markdown files with >=100 threads.
+6. **MDC-FE-015**: Frontend model layer MUST cache previous document text per file path and supply a `diffMap` (via `computeDiffMap`) to the core reanchor pipeline when document text changes between evaluations. This enables O(n*d) diff-based anchor remapping instead of O(n³) fuzzy search.
 
 ## 9. Acceptance criteria
 1. User can discover and act on thread/suggestion state without opening panel.

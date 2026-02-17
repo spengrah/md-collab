@@ -275,7 +275,7 @@ export const evaluateThreadRelevance = (thread: Thread, context: RelevanceContex
       setRelevance(next, 'orphaned', 'ANCHOR_NOT_FOUND', checkedAt, context.headCommit);
       return next;
     }
-    const reanchorResult = reanchor(context.documentText, next.anchor);
+    const reanchorResult = reanchor(context.documentText, next.anchor, { diffMap: context.diffMap });
     if (reanchorResult.start && reanchorResult.end) {
       next.anchor.primary.start = reanchorResult.start;
       next.anchor.primary.end = reanchorResult.end;

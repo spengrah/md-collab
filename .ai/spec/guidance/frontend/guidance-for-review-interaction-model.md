@@ -20,8 +20,15 @@ Treat overlay UX and suggestion flow as one coherent review interaction surface.
 9. Conflict and base-version failure states must provide actionable recovery links/buttons (reload sidecar, conflict help, settings/help).
 10. Prefer panel readability over dense horizontal rows: render message history in a vertical, chat-like layout with clear author/time header and fuller body preview.
 
+## Diff-based buffer capture (MDC-FE-015)
+11. Cache document text in a module-level `Map<string, string>` keyed by document path.
+12. On each `reanchorAll` or `collectContext` call, compare current text against cached text; if changed, compute `diffMap` via `computeDiffMap(oldText, newText)` and pass it to `reanchor`.
+13. Update the cache after computing the diff. Clear the cache entry on full relevance cache invalidation.
+14. The editor buffer is the primary base text source — no git lookup needed for the common case.
+
 ## Anti-patterns
 1. Duplicate write logic in overlay click handlers.
 2. Interactive overlays that obscure source text.
 3. Requiring Git-only semantics in local draft workflows.
 4. Silent apply/reject outcomes without thread audit message.
+5. Computing diffMap from git history instead of the cached editor buffer — the editor buffer is always available and captures both human and agent edits.

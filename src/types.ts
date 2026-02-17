@@ -207,6 +207,7 @@ export interface RelevanceContext {
   headBlobSha?: string;
   baseBlobSha?: string;
   gitAvailable?: boolean;
+  diffMap?: import('./diff-remap.js').DiffMap;
 }
 
 export interface SuggestionMutationInput {

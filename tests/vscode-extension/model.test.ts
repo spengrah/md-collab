@@ -98,6 +98,39 @@ describe('vscode-extension model sidecar lifecycle', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('uses diff-based remapping when document text changes between reanchorAll calls', () => {
+    invalidateRelevanceCache();
+
+    const dir = mkdtempSync(join(tmpdir(), 'md-collab-ext-'));
+    const docPath = join(dir, 'doc.md');
+    const oldText = 'Line one.\nLine two has anchor text here.\nLine three.\n';
+    writeFileSync(docPath, oldText, 'utf8');
+
+    // Create thread anchored to "anchor text" (offset 23..34 on line 2)
+    const withThread = addComment(loadStateForDocument(docPath), oldText, 23, 34, 'comment on anchor text', config);
+    const thread = withThread.sidecar.threads[0];
+    expect(thread.anchor.fallback.quote).toBe('anchor text');
+    expect(thread.anchor.primary.start.offset_utf16).toBe(23);
+
+    // Seed the lastDocumentText cache with oldText by calling reanchorAll once
+    writeFileSync(docPath, oldText, 'utf8');
+    reanchorAll(withThread, oldText);
+
+    // Now shift anchor text by inserting a new line before it
+    const newText = 'Line one.\nInserted line.\nLine two has anchor text here.\nLine three.\n';
+    writeFileSync(docPath, newText, 'utf8');
+
+    const reanchored = reanchorAll(withThread, newText);
+    const updated = reanchored.sidecar.threads[0];
+
+    // Anchor should have remapped to the new offset (shifted by "Inserted line.\n" = 15 chars)
+    expect(updated.anchor.primary.start.offset_utf16).toBe(23 + 15);
+    expect(updated.anchor.primary.end.offset_utf16).toBe(34 + 15);
+    expect(updated.anchor.anchor_confidence).toBe('high');
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('detects stale sidecar checkpoint and aborts write without overwriting external changes', () => {
     const dir = mkdtempSync(join(tmpdir(), 'md-collab-ext-'));
     const docPath = join(dir, 'doc.md');

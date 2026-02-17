@@ -15,3 +15,8 @@ Purpose: stable requirement IDs for PR-review-style interaction model and compos
 | MDC-FE-009 | `spec-for-thread-panel-chat-webview.md` | webview intent->canonical command routing tests (no direct-write bypass) |
 | MDC-FE-010 | `spec-for-obsidian-plugin.md` | Obsidian panel command/intent parity checks + sidecar compatibility tests |
 | MDC-FE-011 | `spec-for-obsidian-plugin.md` | Source/Live Preview anchor behavior and recovery UX checks |
+| MDC-FE-012 | `spec-for-obsidian-plugin.md` | PluginSettingTab registration with author identity fields |
+| MDC-FE-013 | `spec-for-obsidian-plugin.md` | Settings persistence via saveData/loadData |
+| MDC-FE-014 | `spec-for-obsidian-plugin.md` | Empty author fields fall back to defaults |
+| MDC-FE-015 | `spec-for-review-interaction-model.md` | VS Code model caches document text and supplies diffMap to reanchor |
+| MDC-FE-016 | `spec-for-obsidian-plugin.md` | Obsidian service caches document text and supplies diffMap to reanchor |

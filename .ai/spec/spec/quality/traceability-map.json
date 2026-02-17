@@ -160,6 +160,14 @@
       "tests": ["tests/obsidian-plugin/settings-tab.test.ts"]
     },
     {
+      "requirementId": "MDC-FE-015",
+      "tests": ["tests/vscode-extension/model.test.ts"]
+    },
+    {
+      "requirementId": "MDC-FE-016",
+      "tests": ["tests/obsidian-plugin/service-reanchor.test.ts"]
+    },
+    {
       "requirementId": "MDC-CLI-001",
       "tests": ["tests/backend/cli.test.ts"]
     },

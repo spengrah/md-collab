@@ -66,6 +66,20 @@ Manual acceptance:
 2. Validate Source + Live Preview behavior.
 3. Validate performance with high thread/message count note.
 
+## Settings tab
+
+- Extend `PluginSettingTab` in a dedicated `settings-tab.ts` module.
+- Use the `Setting` builder with `.addText()` for each field (`authorId`, `authorLabel`).
+- On change: update `plugin.settings.<field>` and call `plugin.saveSettings()`.
+- `saveSettings()` delegates to `this.saveData(this.settings)`.
+- `loadSettings()` merges saved data over `DEFAULT_SETTINGS` via `Object.assign()`, ensuring empty fields fall back to defaults at usage sites (the `author()` helper).
+
+## Diff-based buffer capture (MDC-FE-016)
+- Cache document text in a module-level `Map<string, string>` keyed by document path in `service.ts`.
+- In `reanchorAll`, compare current file text against cached text; compute `diffMap` via `computeDiffMap` and pass to each `reanchor` call.
+- Export the cache as `__testOnlyLastDocumentText` for test access.
+- The Obsidian service reads document text via `readFileSync` (not editor buffer), so the cache captures the last-read disk state.
+
 ## Anti-patterns to avoid
 1. Obsidian-specific sidecar fork/schema drift.
 2. Re-implementing core write logic inside UI classes.

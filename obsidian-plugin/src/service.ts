@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import {
   applySuggestion,
   applyReanchor,
+  computeDiffMap,
   createThread,
   proposeSuggestion,
   readSidecarFile,
@@ -117,12 +118,23 @@ export const reopen = (state: DocumentThreadState, threadId: string, authorId: s
     sidecar: reopenThread({ sidecar: state.sidecar, threadId, actor: asAuthor(authorId, authorLabel), now: now() }),
   });
 
+const lastDocumentText = new Map<string, string>();
+
 export const reanchorAll = (state: DocumentThreadState): DocumentThreadState => {
   const text = readFileSync(state.documentPath, 'utf8');
+
+  // Compute diffMap from cached previous text
+  let diffMap: import('./vendor.js').DiffMap | undefined;
+  const oldText = lastDocumentText.get(state.documentPath);
+  if (oldText !== undefined && oldText !== text) {
+    diffMap = computeDiffMap(oldText, text);
+  }
+  lastDocumentText.set(state.documentPath, text);
+
   let next = state.sidecar;
   let changed = false;
   for (const thread of next.threads) {
-    const result = reanchor(text, thread.anchor);
+    const result = reanchor(text, thread.anchor, { diffMap });
     if (result.reanchored || result.anchor_confidence !== thread.anchor.anchor_confidence) {
       next = applyReanchor(next, thread.thread_id, result, now());
       changed = true;
@@ -131,6 +143,8 @@ export const reanchorAll = (state: DocumentThreadState): DocumentThreadState => 
   if (!changed) return state;
   return persist({ ...state, sidecar: next });
 };
+
+export const __testOnlyLastDocumentText = lastDocumentText;
 
 export const proposeThreadSuggestion = (
   state: DocumentThreadState,

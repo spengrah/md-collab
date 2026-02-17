@@ -54,6 +54,7 @@ Deliver an Obsidian plugin that provides Google-Docs-like discussion panel flow 
 2. Handles vault rename/move events for markdown/sidecar pairing.
 3. Debounces file watcher update bursts.
 4. Supports large-vault performance without full rerender on every event.
+5. **MDC-FE-016**: Service layer MUST cache previous document text per file path and supply a `diffMap` to the core reanchor pipeline when document text changes between `reanchorAll` calls, matching the VS Code model layer behavior (MDC-FE-015).
 
 ## 8. Accessibility and usability
 1. Keyboard navigation for thread rows and action controls.
@@ -64,6 +65,11 @@ Deliver an Obsidian plugin that provides Google-Docs-like discussion panel flow 
 1. Sidecar conflict surfaces visible banner with reload action.
 2. Broken anchor threads expose relink action.
 3. Base-context unavailable states include plain-language explanation.
+
+## 11. Settings
+1. **MDC-FE-012**: Plugin MUST register a `PluginSettingTab` exposing author identity fields (`authorId`, `authorLabel`).
+2. **MDC-FE-013**: Settings MUST persist via `Plugin.saveData()` and restore via `Plugin.loadData()`.
+3. **MDC-FE-014**: Empty `authorId`/`authorLabel` MUST fall back to defaults (`"obsidian-user"` / `"Obsidian User"`).
 
 ## 10. Acceptance criteria
 1. User can add comment/reply/resolve/suggest from Obsidian without editing sidecar manually.

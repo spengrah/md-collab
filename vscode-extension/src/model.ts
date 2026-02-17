@@ -4,6 +4,7 @@ import { dirname, relative } from 'node:path';
 import { execFileSync, execSync } from 'node:child_process';
 import {
   applyReanchor,
+  computeDiffMap,
   createThread,
   parseSidecar,
   reanchor,
@@ -26,6 +27,7 @@ import {
   type AnchorConfidence,
   type Anchor,
   type Author,
+  type DiffMap,
   type Sidecar,
   type TimelineKind,
 } from '../vendor/core/index.js';
@@ -103,6 +105,7 @@ export const loadStateForDocument = (docPath: string): DocumentThreadState => {
 
 const relevanceCache = new Map<string, Sidecar>();
 const lastHeadByDocument = new Map<string, string>();
+const lastDocumentText = new Map<string, string>();
 
 const currentHeadSignature = (state: DocumentThreadState, config?: Config): string => {
   const tk = config?.timelineKind ?? 'workspace';
@@ -137,6 +140,7 @@ export const invalidateRelevanceCache = (documentPath?: string): void => {
   if (!documentPath) {
     relevanceCache.clear();
     lastHeadByDocument.clear();
+    lastDocumentText.clear();
     return;
   }
   for (const key of relevanceCache.keys()) {
@@ -150,6 +154,16 @@ const collectContext = (state: DocumentThreadState, config?: Config) => {
   const documentText = fileExists ? readFileSync(state.documentPath, 'utf8') : undefined;
   const workspaceFileHash = documentText ? hashText(documentText) : undefined;
   const workspaceFileMtime = fileExists ? new Date(statSync(state.documentPath).mtimeMs).toISOString() : undefined;
+
+  // Compute diffMap from cached previous text
+  let diffMap: DiffMap | undefined;
+  if (documentText) {
+    const oldText = lastDocumentText.get(state.documentPath);
+    if (oldText !== undefined && oldText !== documentText) {
+      diffMap = computeDiffMap(oldText, documentText);
+    }
+    lastDocumentText.set(state.documentPath, documentText);
+  }
 
   const kind = config?.timelineKind;
   let gitAvailable: boolean | undefined;
@@ -181,6 +195,7 @@ const collectContext = (state: DocumentThreadState, config?: Config) => {
     headCommit,
     headBlobSha,
     gitAvailable,
+    diffMap,
   };
 };
 
@@ -294,11 +309,19 @@ export const reopen = (state: DocumentThreadState, threadId: string, config: Con
 };
 
 export const reanchorAll = (state: DocumentThreadState, documentText: string, config?: Config): DocumentThreadState => {
+  // Compute diffMap from cached previous text
+  let diffMap: DiffMap | undefined;
+  const oldText = lastDocumentText.get(state.documentPath);
+  if (oldText !== undefined && oldText !== documentText) {
+    diffMap = computeDiffMap(oldText, documentText);
+  }
+  lastDocumentText.set(state.documentPath, documentText);
+
   let next = state.sidecar;
   let changed = false;
 
   for (const thread of next.threads) {
-    const result = reanchor(documentText, thread.anchor);
+    const result = reanchor(documentText, thread.anchor, { diffMap });
     if (result.reanchored || result.anchor_confidence !== thread.anchor.anchor_confidence) {
       next = applyReanchor(next, thread.thread_id, result, now());
       changed = true;
