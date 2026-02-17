@@ -2,6 +2,7 @@ export type ThreadStatus = 'open' | 'resolved';
 export type AnchorConfidence = 'high' | 'medium' | 'low' | 'broken';
 export type ReanchorReasonCode =
   | 'exact_positional'
+  | 'diff_remapped'
   | 'exact_nearby'
   | 'context_disambiguated'
   | 'fuzzy_recovery'

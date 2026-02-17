@@ -1,6 +1,7 @@
 export * from './types.js';
 export * from './errors.js';
 export * from './anchor.js';
+export * from './diff-remap.js';
 export * from './schema.js';
 export * from './serializer.js';
 export * from './operations.js';

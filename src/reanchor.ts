@@ -1,10 +1,13 @@
 import { offsetToPoint } from './anchor.js';
+import type { DiffMap } from './diff-remap.js';
+import { remapAnchorViaDiff } from './diff-remap.js';
 import type { Anchor, ReanchorOutput } from './types.js';
 
 export interface ReanchorParams {
   W?: number;
   T_high?: number;
   T_low?: number;
+  diffMap?: DiffMap;
 }
 
 const defaults = { W: 600, T_high: 0.9, T_low: 0.72 };
@@ -97,6 +100,12 @@ export const reanchor = (documentText: string, anchor: Anchor, params: ReanchorP
   // 1) fast exact positional
   if (oldStart >= 0 && oldEnd <= text.length && text.slice(oldStart, oldEnd) === quote) {
     return toOutput(text, { start: oldStart, end: oldEnd }, 'high', 'exact_positional', false);
+  }
+
+  // 1b) diff-based remapping (when base text diff is available)
+  if (config.diffMap) {
+    const diffResult = remapAnchorViaDiff(text, anchor, config.diffMap);
+    if (diffResult) return diffResult;
   }
 
   // 2) nearby exact quote search
