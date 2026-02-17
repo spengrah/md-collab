@@ -88,6 +88,18 @@
       "tests": ["tests/backend/sidecar-file.test.ts"]
     },
     {
+      "requirementId": "MDC-BE-022",
+      "tests": ["tests/backend/diff-remap.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-023",
+      "tests": ["tests/backend/diff-remap.test.ts"]
+    },
+    {
+      "requirementId": "MDC-BE-024",
+      "tests": ["tests/backend/diff-remap.test.ts"]
+    },
+    {
       "requirementId": "MDC-FE-001",
       "tests": ["tests/vscode-extension/model.test.ts"]
     },
@@ -134,6 +146,18 @@
     {
       "requirementId": "MDC-FE-011",
       "tests": ["tests/obsidian-plugin/thread-view.integration.test.ts", "tests/obsidian-plugin/thread-view.test.ts"]
+    },
+    {
+      "requirementId": "MDC-FE-012",
+      "tests": ["tests/obsidian-plugin/settings-tab.test.ts"]
+    },
+    {
+      "requirementId": "MDC-FE-013",
+      "tests": ["tests/obsidian-plugin/settings-tab.test.ts"]
+    },
+    {
+      "requirementId": "MDC-FE-014",
+      "tests": ["tests/obsidian-plugin/settings-tab.test.ts"]
     },
     {
       "requirementId": "MDC-CLI-001",

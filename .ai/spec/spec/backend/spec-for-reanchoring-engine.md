@@ -1,6 +1,6 @@
 # spec-for-reanchoring-engine
 
-Status: v0.1 draft
+Status: v0.2 draft
 
 ## 1. Scope
 Defines deterministic algorithm for relocating anchors after document edits.
@@ -9,6 +9,7 @@ Defines deterministic algorithm for relocating anchors after document edits.
 - MDC-BE-008
 - MDC-BE-009
 - MDC-BE-010
+- MDC-BE-022..024 (via `spec-for-diff-based-anchor-remapping.md`)
 
 ## 2. Inputs
 1. Current document text
@@ -23,6 +24,11 @@ Defines deterministic algorithm for relocating anchors after document edits.
 ## 4. Algorithm (normative order)
 1. **Fast exact positional check**
    - If positional range exists and extracted text == `quote`, return `high`.
+1b. **Diff-based remapping** (v0.2, when `oldText` is available)
+   - See `spec-for-diff-based-anchor-remapping.md` for full algorithm.
+   - Map old offsets through structural diff, verify quote at mapped position.
+   - Success => `high`, `reason_code: diff_remapped`.
+   - Failure => fall through to step 2.
 2. **Nearby exact quote search**
    - Search within ±W chars around prior start offset.
    - Unique match => `high`.
@@ -53,7 +59,7 @@ Tie-break rules:
 - updated range offsets/line-columns
 - `anchor_confidence`
 - `reanchored` boolean
-- `reason_code`: `exact_positional | exact_nearby | context_disambiguated | fuzzy_recovery | broken`
+- `reason_code`: `exact_positional | diff_remapped | exact_nearby | context_disambiguated | fuzzy_recovery | broken`
 
 ## 7. Safety constraints
 1. Never auto-attach when top two candidates are near-tied under disambiguation threshold.

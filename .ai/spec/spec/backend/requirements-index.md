@@ -25,6 +25,9 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 - **MDC-BE-019**: Atomic write parity normalization occurs on final sidecar path after temp-file rename.
 - **MDC-BE-020**: Permission normalization must not add permissions not present on source markdown mode bits.
 - **MDC-BE-021**: Permission-parity failures logged with operation type and errno; mutation fails only when parity failure implies unusable sidecar access.
+- **MDC-BE-022**: Diff-based offset remapping maps anchor positions through structural document diffs in O(n*d) time.
+- **MDC-BE-023**: Diff remapping verifies quote integrity at mapped position before accepting.
+- **MDC-BE-024**: Diff remapping falls through to existing fuzzy pipeline when base text is unavailable.
 
 ## Mapping
 
@@ -38,3 +41,4 @@ Purpose: assign stable requirement IDs and map each requirement to a normative s
 | MDC-BE-014 | `spec-for-author-identity.md` | runtime author validation tests across all mutation ops |
 | MDC-BE-015 | `spec-for-review-state-and-versioning.md` | version-context field compatibility + relevance-state determinism tests |
 | MDC-BE-016..021 | `spec-for-sidecar-permission-parity.md` | permission parity create/rewrite tests + EPERM warning-path tests |
+| MDC-BE-022..024 | `spec-for-diff-based-anchor-remapping.md` | diff remapping unit tests + reanchor integration tests |

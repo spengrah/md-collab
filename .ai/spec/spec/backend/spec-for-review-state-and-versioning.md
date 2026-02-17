@@ -56,11 +56,15 @@ Version context must support pre-commit collaboration and post-commit provenance
 
 ## 5. Deterministic relevance pipeline (normative order)
 1. Direct anchor match in current file.
-2. Reanchor attempt using core engine.
+2. Reanchor attempt using core engine (see `spec-for-reanchoring-engine.md`).
+   - **Short-circuit**: if `anchor_confidence` is already `broken`, skip the reanchor attempt and assign `orphaned` / `ANCHOR_NOT_FOUND` directly. Re-running the search on the same document produces the same broken result.
 3. Workspace timeline delta check (snapshot/hash/mtime/session context).
 4. Git path continuity check (rename/deletion) when Git context exists.
 5. Git version delta check (stored context vs current HEAD/blob) when Git context exists.
 6. Assign `relevance_state` + `relevance_reason` + check metadata.
+
+### 5.1 Pipeline invocation scope
+The relevance pipeline runs on document content changes (file save, external file modification, explicit reanchor command). It does **not** run on status-only sidecar mutations (resolve, reopen, reply) because these operations do not change the document text and therefore cannot affect anchor positions or relevance state.
 
 ## 6. Deterministic state rules
 1. High-confidence direct/compatible match -> `active`.
