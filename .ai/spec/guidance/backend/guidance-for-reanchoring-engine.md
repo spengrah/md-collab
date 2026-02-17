@@ -31,6 +31,10 @@ Maintain trust in comments by prioritizing correctness over aggressive auto-reli
 7. **Broken-anchor recovery**: Broken anchors are no longer short-circuited. When the document text changes (cache miss on new hash), broken anchors re-run reanchor with the budget cap. If the original text is restored, the anchor recovers. When text is unchanged, the cache returns `broken` instantly — same perf as the old short-circuit.
 8. **Global unique exact match**: When a quote exists exactly once in the document but outside the ±W nearby window, the algorithm returns `high`/`exact_global` instead of falling through to fuzzy or broken. This handles large offset shifts from document restructuring (e.g. table changes, section reordering) without increasing W or fuzzy search cost.
 
+## Key distinctions
+1. **`orphaned` vs `outdated`**: `orphaned` means `ANCHOR_NOT_FOUND` — the anchor text cannot be located in the document. `outdated` means `CONTENT_CHANGED` — the anchor was successfully positioned but the document version differs from the thread's creation context. A thread moving from orphaned to outdated after a fix means the anchor recovered but the document has changed since thread creation — this is correct.
+2. **In-memory vs on-disk relevance**: Frontends evaluate relevance in memory on load but do not persist the result to the sidecar file. The sidecar only updates on explicit write actions (add comment, save-triggered reanchor, etc.). Do not expect the sidecar file to reflect computed relevance state.
+
 ## Anti-patterns
 1. Re-anchoring with non-deterministic randomness.
 2. Attaching to first fuzzy match without tie checks.

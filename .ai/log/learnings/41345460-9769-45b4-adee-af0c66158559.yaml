@@ -1,0 +1,64 @@
+---
+timestamp: "2026-02-17T00:34:21.638000"
+type: gotcha
+summary: Sidecar files on disk don't auto-update after in-memory relevance changes
+detail: |
+  When frontends (VS Code, Obsidian) load a sidecar and evaluate relevance in memory, the computed relevance_state (orphaned, outdated, etc.) is displayed in the UI but NOT written back to disk. The sidecar file only updates on explicit user actions (add comment, save-triggered reanchor, etc.). This caused confusion when testing — the agent expected to see relevance changes persisted to the file, but they only exist in memory until a write operation occurs.
+actionable: true
+
+---
+timestamp: "2026-02-17T00:34:21.638000"
+type: gotcha
+summary: Reanchor algorithm had a missing case for unique global exact matches
+detail: |
+  The reanchor algorithm searched exact matches within ±W chars (step 2), then disambiguated multiple global matches (step 3), then fell back to fuzzy search (step 4). If exactly ONE global exact match existed OUTSIDE the ±W window, it fell through to 'broken' status without returning the valid match. This caused anchors to be marked orphaned even when their quote text existed uniquely in the document. The fix was adding step 3b: if allExact.length === 1, return it as high/exact_global.
+actionable: true
+
+---
+timestamp: "2026-02-17T00:34:21.638000"
+type: architecture
+summary: Reanchor result caching requires document text hash + anchor hashes
+detail: |
+  The reanchor cache is keyed on `documentTextHash::quote_hash::context_hash` to ensure cache hits only when both the document AND the anchor are identical. This prevents incorrect cache hits when the same anchor is evaluated against different document versions. LRU eviction at 200 entries prevents unbounded memory growth. Frontends must call invalidateReanchorCache() when clearing their own relevance caches to keep them in sync.
+actionable: true
+
+---
+timestamp: "2026-02-17T00:34:21.638000"
+type: rule
+summary: Removing broken-anchor short-circuits enables recovery when text is restored
+detail: |
+  The original code had a short-circuit that skipped reanchor for anchors already marked 'broken' to avoid expensive computation. This prevented anchors from recovering if the original text was later restored. The fix: remove the short-circuit and rely on the reanchor cache instead. When text is unchanged, cache hits return 'broken' instantly (same perf as short-circuit). When text changes, cache misses trigger re-evaluation with a budget cap, allowing recovery while preventing expensive loops.
+actionable: true
+
+---
+timestamp: "2026-02-17T00:34:21.638000"
+type: architecture
+summary: Fuzzy loop budget prevents pathological performance
+detail: |
+  The fuzzy recovery loop is O(W × L × T × C) ≈ 180M ops per broken anchor in worst case. Adding a fuzzyBudgetMs parameter (default 200ms) with periodic performance.now() checks (every N iterations, not every iteration to avoid overhead) caps per-thread cost. If budget is exceeded, return best candidate found so far if it meets T_low threshold, otherwise fall through to 'broken'. This brought 5-broken-anchor load time from 20-30s to ~1s.
+actionable: true
+
+---
+timestamp: "2026-02-17T00:34:21.638000"
+type: distinction
+summary: Orphaned vs Outdated thread states have different meanings
+detail: |
+  'Orphaned' means ANCHOR_NOT_FOUND — the anchor text cannot be located in the document (broken). 'Outdated' means CONTENT_CHANGED — the anchor was successfully positioned (high/low confidence) but the workspace_snapshot_id differs from the thread's thread_version_context, indicating the document has changed since the thread was created. A thread progressing from orphaned to outdated after a fix means the anchor recovered but the document version still differs — this is correct behavior.
+actionable: true
+
+---
+timestamp: "2026-02-17T00:34:21.638000"
+type: rule
+summary: Check performance.now() every N iterations, not every iteration
+detail: |
+  When implementing a fuzzy loop budget, calling performance.now() on every iteration adds measurable overhead. Instead, check timing every N iterations (e.g., every 100 iterations). This maintains budget enforcement while minimizing the performance cost of the check itself.
+actionable: true
+
+---
+timestamp: "2026-02-17T00:34:21.638000"
+type: architecture
+summary: Reason codes must be exposed for debugging and user trust
+detail: |
+  The ReanchorReasonCode type (exact_positional, diff_remapped, exact_nearby, exact_global, context_disambiguated, fuzzy_recovery, broken) provides transparency into how each anchor was positioned. These are essential for debugging reanchor behavior and building user trust — users can see exactly why an anchor was placed where it was. When adding new reanchor logic, always add a corresponding reason code.
+actionable: true
+
