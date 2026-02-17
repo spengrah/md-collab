@@ -227,7 +227,7 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
     webviewView.webview.options = { enableScripts: true };
     webviewView.webview.html = html(webviewView.webview);
 
-    webviewView.webview.onDidReceiveMessage(async (message: WebviewInboundMessage) => {
+    webviewView.webview.onDidReceiveMessage((message: WebviewInboundMessage) => {
       if (message.type === 'ready') {
         this.renderNow();
         return;
@@ -253,54 +253,60 @@ export class ThreadChatPanelProvider implements vscode.WebviewViewProvider {
       }
 
       if (!isIntent(message)) return;
-      this.banner = undefined;
-      const command = chatIntentToCommand[message.intent];
-      const args = buildIntentDispatchArgs(message);
-      const requestId = message.requestId ?? randomUUID();
-      try {
-        await this.dispatch(command, ...args);
-        void webviewView.webview.postMessage({ type: 'intentResult', requestId, threadId: message.threadId, ok: true });
-      } catch (err) {
-        const text = err instanceof Error ? err.message : String(err);
-        const lowered = text.toLowerCase();
-        if (lowered.includes('sidecar') && lowered.includes('conflict')) {
-          try {
-            await this.dispatch(chatIntentToCommand.reloadSidecar);
-            await this.dispatch(command, ...args);
-            void webviewView.webview.postMessage({ type: 'intentResult', requestId, threadId: message.threadId, ok: true, retried: true });
-            return;
-          } catch {
-            this.banner = {
-              kind: 'warning',
-              message: 'Sidecar conflict detected. Reload sidecar and retry.',
-              actions: [{ label: 'Reload Sidecar', intent: 'reloadSidecar' }],
-            };
-            void webviewView.webview.postMessage({
-              type: 'intentResult',
-              requestId,
-              threadId: message.threadId,
-              ok: false,
-              kind: 'conflict',
-            });
-            this.renderNow();
-            return;
-          }
-        }
-
-        const looksLikeSelectionError =
-          message.intent === 'addComment' &&
-          (lowered.includes('selection') || lowered.includes('anchor') || lowered.includes('cursor'));
-        void webviewView.webview.postMessage({
-          type: 'intentResult',
-          requestId,
-          threadId: message.threadId,
-          ok: false,
-          kind: looksLikeSelectionError ? 'selection' : 'error',
-          message: text,
-        });
-        this.renderNow();
-      }
+      // Detached: UI messages above return synchronously; intent handling is async
+      // but must not block subsequent message processing.
+      return this.handleIntent(webviewView, message);
     });
+  }
+
+  private async handleIntent(webviewView: vscode.WebviewView, message: WebviewIntentMessage) {
+    this.banner = undefined;
+    const command = chatIntentToCommand[message.intent];
+    const args = buildIntentDispatchArgs(message);
+    const requestId = message.requestId ?? randomUUID();
+    try {
+      await this.dispatch(command, ...args);
+      void webviewView.webview.postMessage({ type: 'intentResult', requestId, threadId: message.threadId, ok: true });
+    } catch (err) {
+      const text = err instanceof Error ? err.message : String(err);
+      const lowered = text.toLowerCase();
+      if (lowered.includes('sidecar') && lowered.includes('conflict')) {
+        try {
+          await this.dispatch(chatIntentToCommand.reloadSidecar);
+          await this.dispatch(command, ...args);
+          void webviewView.webview.postMessage({ type: 'intentResult', requestId, threadId: message.threadId, ok: true, retried: true });
+          return;
+        } catch {
+          this.banner = {
+            kind: 'warning',
+            message: 'Sidecar conflict detected. Reload sidecar and retry.',
+            actions: [{ label: 'Reload Sidecar', intent: 'reloadSidecar' }],
+          };
+          void webviewView.webview.postMessage({
+            type: 'intentResult',
+            requestId,
+            threadId: message.threadId,
+            ok: false,
+            kind: 'conflict',
+          });
+          this.renderNow();
+          return;
+        }
+      }
+
+      const looksLikeSelectionError =
+        message.intent === 'addComment' &&
+        (lowered.includes('selection') || lowered.includes('anchor') || lowered.includes('cursor'));
+      void webviewView.webview.postMessage({
+        type: 'intentResult',
+        requestId,
+        threadId: message.threadId,
+        ok: false,
+        kind: looksLikeSelectionError ? 'selection' : 'error',
+        message: text,
+      });
+      this.renderNow();
+    }
   }
 
   updateState(state: DocumentThreadState | undefined) {
