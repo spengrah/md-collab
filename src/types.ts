@@ -4,6 +4,7 @@ export type ReanchorReasonCode =
   | 'exact_positional'
   | 'diff_remapped'
   | 'exact_nearby'
+  | 'exact_global'
   | 'context_disambiguated'
   | 'fuzzy_recovery'
   | 'broken';

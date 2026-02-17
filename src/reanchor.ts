@@ -161,6 +161,11 @@ export const reanchor = (documentText: string, anchor: Anchor, params: ReanchorP
     return toOutput(text, null, 'broken', 'broken', true);
   }
 
+  // 3b) unique global exact match (outside nearby window)
+  if (allExact.length === 1) {
+    return toOutput(text, allExact[0], 'high', 'exact_global', true);
+  }
+
   // 4) fuzzy recovery only when there are no exact quote matches
   if (allExact.length === 0) {
     const target = anchor.fallback.prefix + anchor.fallback.quote + anchor.fallback.suffix;

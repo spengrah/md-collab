@@ -36,6 +36,9 @@ Defines deterministic algorithm for relocating anchors after document edits.
 3. **Context disambiguation**
    - If multiple exact matches, score candidates by prefix/suffix similarity.
    - Top score >= T_high and clear winner => `medium` or `high`.
+3b. **Global unique exact match**
+   - If exactly one exact match exists in the full document (outside ±W), return `high`, `reason_code: exact_global`.
+   - This handles large offset shifts where the quote text is unchanged but moved beyond the nearby window.
 4. **Fuzzy recovery**
    - If no exact quote match, fuzzy-match quote+context using **normalized Levenshtein similarity** on the string: `prefix + quote + suffix`.
    - Normalization: lowercase + collapse whitespace + trim.
@@ -60,7 +63,7 @@ Tie-break rules:
 - updated range offsets/line-columns
 - `anchor_confidence`
 - `reanchored` boolean
-- `reason_code`: `exact_positional | diff_remapped | exact_nearby | context_disambiguated | fuzzy_recovery | broken`
+- `reason_code`: `exact_positional | diff_remapped | exact_nearby | exact_global | context_disambiguated | fuzzy_recovery | broken`
 
 ## 7. Safety constraints
 1. Never auto-attach when top two candidates are near-tied under disambiguation threshold.

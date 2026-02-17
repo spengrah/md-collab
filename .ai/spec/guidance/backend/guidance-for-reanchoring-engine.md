@@ -29,6 +29,7 @@ Maintain trust in comments by prioritizing correctness over aggressive auto-reli
 5. **Fuzzy budget**: The fuzzy loop checks `performance.now()` every 64 iterations and breaks at `fuzzyBudgetMs` (default 200ms). This caps worst-case per anchor to ~200ms. Checking every iteration would add overhead from `performance.now()` calls.
 6. **Reanchor result cache**: A module-level `Map<string, ReanchorOutput>` in `operations.ts` caches results keyed on `hash(documentText)::quote_hash::context_hash`. Same document + same anchor = instant cache hit. LRU eviction at 200 entries. Call `invalidateReanchorCache()` from frontends when document content changes.
 7. **Broken-anchor recovery**: Broken anchors are no longer short-circuited. When the document text changes (cache miss on new hash), broken anchors re-run reanchor with the budget cap. If the original text is restored, the anchor recovers. When text is unchanged, the cache returns `broken` instantly — same perf as the old short-circuit.
+8. **Global unique exact match**: When a quote exists exactly once in the document but outside the ±W nearby window, the algorithm returns `high`/`exact_global` instead of falling through to fuzzy or broken. This handles large offset shifts from document restructuring (e.g. table changes, section reordering) without increasing W or fuzzy search cost.
 
 ## Anti-patterns
 1. Re-anchoring with non-deterministic randomness.
