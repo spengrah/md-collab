@@ -15,6 +15,7 @@ import {
   sidecarPathForDocument,
   writeSidecarFileAtomic,
   evaluateSidecarRelevance,
+  invalidateReanchorCache,
   proposeSuggestion,
   applySuggestion,
   rejectSuggestion,
@@ -137,6 +138,7 @@ const timelineKey = (state: DocumentThreadState, config?: Config): string => {
 };
 
 export const invalidateRelevanceCache = (documentPath?: string): void => {
+  invalidateReanchorCache();
   if (!documentPath) {
     relevanceCache.clear();
     lastHeadByDocument.clear();

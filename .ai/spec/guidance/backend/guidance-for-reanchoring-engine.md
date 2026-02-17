@@ -21,12 +21,14 @@ Maintain trust in comments by prioritizing correctness over aggressive auto-reli
 2. Add a command to re-run re-anchoring for all threads in file.
 3. Keep fixture corpus as the source of truth for behavior stability.
 
-## Performance notes (v0.2)
+## Performance notes (v0.3)
 1. Full-sweep re-anchoring on open/save/manual refresh is acceptable for v0.1 target sizes.
 2. Skip resolved threads during inline rendering work, but keep panel metadata valid.
 3. Diff-based remapping (see `guidance-for-diff-based-anchor-remapping.md`) replaces brute-force fuzzy search for the common case. Use it when base text is available.
 4. Status-only mutations (resolve, reopen, reply) should not trigger relevance re-evaluation. The document hasn't changed, so anchors can't have moved.
-5. Already-broken anchors should short-circuit in relevance evaluation. Re-running fuzzy search on the same document produces the same broken result.
+5. **Fuzzy budget**: The fuzzy loop checks `performance.now()` every 64 iterations and breaks at `fuzzyBudgetMs` (default 200ms). This caps worst-case per anchor to ~200ms. Checking every iteration would add overhead from `performance.now()` calls.
+6. **Reanchor result cache**: A module-level `Map<string, ReanchorOutput>` in `operations.ts` caches results keyed on `hash(documentText)::quote_hash::context_hash`. Same document + same anchor = instant cache hit. LRU eviction at 200 entries. Call `invalidateReanchorCache()` from frontends when document content changes.
+7. **Broken-anchor recovery**: Broken anchors are no longer short-circuited. When the document text changes (cache miss on new hash), broken anchors re-run reanchor with the budget cap. If the original text is restored, the anchor recovers. When text is unchanged, the cache returns `broken` instantly — same perf as the old short-circuit.
 
 ## Anti-patterns
 1. Re-anchoring with non-deterministic randomness.

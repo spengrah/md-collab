@@ -8,9 +8,10 @@ export interface ReanchorParams {
   T_high?: number;
   T_low?: number;
   diffMap?: DiffMap;
+  fuzzyBudgetMs?: number;
 }
 
-const defaults = { W: 600, T_high: 0.9, T_low: 0.72 };
+const defaults = { W: 600, T_high: 0.9, T_low: 0.72, fuzzyBudgetMs: 200 };
 const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
 
 const levenshtein = (a: string, b: string): number => {
@@ -168,6 +169,12 @@ export const reanchor = (documentText: string, anchor: Anchor, params: ReanchorP
     const fuzzyStart = Math.max(0, oldStart - config.W);
     const fuzzyEnd = Math.min(text.length, oldStart + config.W + Math.max(quote.length, 1));
 
+    const budgetMs = config.fuzzyBudgetMs!;
+    const t0 = performance.now();
+    const CHECK_INTERVAL = 64;
+    let iterations = 0;
+    let budgetExceeded = false;
+
     let best: Candidate | null = null;
     for (let start = fuzzyStart; start < fuzzyEnd; start++) {
       for (let len = minLen; len <= maxLen && start + len <= fuzzyEnd; len++) {
@@ -176,7 +183,12 @@ export const reanchor = (documentText: string, anchor: Anchor, params: ReanchorP
         if (!best || score > (best.score ?? -1)) {
           best = { start, end: start + len, score };
         }
+        if (++iterations % CHECK_INTERVAL === 0 && performance.now() - t0 >= budgetMs) {
+          budgetExceeded = true;
+          break;
+        }
       }
+      if (budgetExceeded) break;
     }
 
     if (best && (best.score ?? 0) >= config.T_low) {

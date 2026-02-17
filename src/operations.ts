@@ -24,6 +24,17 @@ import type {
 const clone = <T>(value: T): T => structuredClone(value);
 const nowUtc = () => new Date().toISOString();
 
+// Reanchor result cache — keyed on documentTextHash::quote_hash::context_hash
+const reanchorCache = new Map<string, ReanchorOutput>();
+const REANCHOR_CACHE_MAX = 200;
+
+const reanchorCacheKey = (docTextHash: string, anchor: { fallback: { quote_hash: string; context_hash: string } }): string =>
+  `${docTextHash}::${anchor.fallback.quote_hash}::${anchor.fallback.context_hash}`;
+
+export const invalidateReanchorCache = (): void => {
+  reanchorCache.clear();
+};
+
 const isValidAuthor = (author: Author | undefined): author is Author =>
   !!author &&
   typeof author.author_id === 'string' &&
@@ -269,13 +280,17 @@ export const evaluateThreadRelevance = (thread: Thread, context: RelevanceContex
   // 2) explicit reanchor stage
   let wasReanchored = false;
   if (!directMatch && context.documentText && context.fileExists !== false) {
-    // Skip expensive fuzzy reanchor for anchors already known to be broken —
-    // rerunning on the same document text produces the same broken result.
-    if (next.anchor.anchor_confidence === 'broken') {
-      setRelevance(next, 'orphaned', 'ANCHOR_NOT_FOUND', checkedAt, context.headCommit);
-      return next;
+    const docTextHash = hashText(context.documentText);
+    const cacheKey = reanchorCacheKey(docTextHash, next.anchor);
+    const cached = reanchorCache.get(cacheKey);
+    const reanchorResult = cached ?? reanchor(context.documentText, next.anchor, { diffMap: context.diffMap });
+    if (!cached) {
+      reanchorCache.set(cacheKey, reanchorResult);
+      if (reanchorCache.size > REANCHOR_CACHE_MAX) {
+        const oldest = reanchorCache.keys().next().value;
+        if (oldest !== undefined) reanchorCache.delete(oldest);
+      }
     }
-    const reanchorResult = reanchor(context.documentText, next.anchor, { diffMap: context.diffMap });
     if (reanchorResult.start && reanchorResult.end) {
       next.anchor.primary.start = reanchorResult.start;
       next.anchor.primary.end = reanchorResult.end;

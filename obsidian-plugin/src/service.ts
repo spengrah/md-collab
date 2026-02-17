@@ -3,6 +3,7 @@ import {
   applySuggestion,
   applyReanchor,
   computeDiffMap,
+  invalidateReanchorCache,
   createThread,
   proposeSuggestion,
   readSidecarFile,
@@ -128,6 +129,7 @@ export const reanchorAll = (state: DocumentThreadState): DocumentThreadState => 
   const oldText = lastDocumentText.get(state.documentPath);
   if (oldText !== undefined && oldText !== text) {
     diffMap = computeDiffMap(oldText, text);
+    invalidateReanchorCache();
   }
   lastDocumentText.set(state.documentPath, text);
 
