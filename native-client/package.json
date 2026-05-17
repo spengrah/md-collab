@@ -1,0 +1,34 @@
+{
+  "name": "md-collab-native-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tauri-based desktop client for md-collab (PR1: read-only foundation)",
+  "scripts": {
+    "sync-core": "node ./scripts/sync-core.mjs",
+    "build-validator": "node ./scripts/build-validator.mjs",
+    "predev": "npm run sync-core && npm run build-validator",
+    "dev": "vite",
+    "pretypecheck": "npm run sync-core && npm run build-validator",
+    "typecheck": "tsc --noEmit -p ./",
+    "prebuild": "npm --prefix .. run build && npm run sync-core && npm run build-validator",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.3.0",
+    "@codemirror/state": "^6.4.0",
+    "@codemirror/view": "^6.26.0",
+    "@pierre/trees": "1.0.0-beta.3",
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-opener": "^2.0.0",
+    "codemirror": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.24",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.0"
+  }
+}
