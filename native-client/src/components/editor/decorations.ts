@@ -74,6 +74,15 @@ function buildInlineDecorations(
   for (const t of threads) {
     if (t.anchor_confidence === 'broken') continue; // panel-only per spec §6.3
     if (t.status === 'resolved' && !options.showResolvedInline) continue;
+
+    // Warn FIRST (before clamping) so the diagnostic actually fires when the
+    // engine hands back an out-of-range position. Then clamp for safety.
+    if (t.start_offset < 0 || t.end_offset > docLength) {
+      console.warn(
+        `thread ${t.thread_id} clamped to doc bounds (raw ${t.start_offset}..${t.end_offset}, doc length ${docLength})`
+      );
+    }
+
     const start = clamp(t.start_offset, 0, docLength);
     const end = clamp(t.end_offset, start, docLength);
     if (start === end) {
@@ -81,20 +90,31 @@ function buildInlineDecorations(
       console.warn(`thread ${t.thread_id} has zero-width range; skipping inline mark`);
       continue;
     }
-    if (start < 0 || end > docLength) {
-      console.warn(`thread ${t.thread_id} clamped to doc bounds (${start}..${end})`);
-    }
     ranges.push(
       Decoration.mark({
         class: `mdc-thread mdc-confidence-${t.anchor_confidence}`,
         attributes: {
           'data-mdc-thread-id': t.thread_id,
+          title: tooltipForConfidence(t.anchor_confidence),
         },
       }).range(start, end)
     );
   }
   ranges.sort((a, b) => a.from - b.from || a.to - b.to);
   return Decoration.set(ranges);
+}
+
+function tooltipForConfidence(c: AnchorConfidence): string {
+  switch (c) {
+    case 'high':
+      return 'Thread (high confidence)';
+    case 'medium':
+      return 'Thread (medium confidence — anchor may have drifted)';
+    case 'low':
+      return 'Thread (low confidence — anchor is approximate)';
+    case 'broken':
+      return 'Thread (broken anchor)';
+  }
 }
 
 // ---------- Gutter markers ----------

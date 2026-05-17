@@ -11,9 +11,9 @@ import {
   mountSidecarErrorBanner,
   type SidecarErrorBannerHandle,
 } from './components/editor/sidecar-error-banner.js';
-import { mountThreadPanel, type ThreadPanelHandle, type ThreadPanelRow } from './components/thread-panel/index.js';
-import type { ThreadDecorationInput } from './components/editor/decorations.js';
-import { parseSidecar, reanchor, type Anchor, type Thread } from './app/core.js';
+import { mountThreadPanel, type ThreadPanelHandle } from './components/thread-panel/index.js';
+import { parseSidecar, type Thread } from './app/core.js';
+import { prepareThreads } from './app/thread-decorations.js';
 
 async function main() {
   const settings: PersistedState = await ipc.settingsLoad();
@@ -151,60 +151,15 @@ async function main() {
       sidecarError = `Failed to read sidecar: ${err instanceof Error ? err.message : String(err)}`;
     }
 
-    // Compute decoration inputs by reanchoring each thread.
-    //
-    // Inclusive/exclusive end semantics:
-    //   - stored `thread.anchor.primary.end.offset_utf16` is EXCLUSIVE
-    //     (see src/anchor.ts line 76 — "stored primary.end.offset_utf16 is
-    //     also exclusive").
-    //   - `reanchor()`'s `result.end.offset_utf16` is INCLUSIVE (the engine
-    //     calls offsetToPoint on candidate.end - 1).
-    //
-    // CM6 `Decoration.mark` expects EXCLUSIVE end, so:
-    //   - reanchor path: +1 to convert inclusive -> exclusive
-    //   - direct path:   use stored value as-is (already exclusive)
-    const decoInputs: ThreadDecorationInput[] = [];
-    const panelRows: ThreadPanelRow[] = [];
+    // Compute decoration inputs and panel rows. The inclusive/exclusive
+    // end conversion + reanchor-on-open branching is centralized in
+    // `prepareThreads` so it can be unit-tested independently of the DOM.
     const reanchorOnOpen = settings.settings.reanchor_on_open ?? true;
-    for (const thread of sidecarThreads) {
-      let start: number;
-      let endExclusive: number;
-      let confidence = thread.anchor.anchor_confidence;
-      if (reanchorOnOpen) {
-        const result = reanchor(docText, thread.anchor as Anchor);
-        confidence = result.anchor_confidence;
-        if (result.start && result.end) {
-          start = result.start.offset_utf16;
-          endExclusive = result.end.offset_utf16 + 1;
-        } else {
-          // Broken — use the stored values (also exclusive end) so the panel
-          // can still surface a position. Inline rendering skips broken.
-          start = thread.anchor.primary.start.offset_utf16;
-          endExclusive = thread.anchor.primary.end.offset_utf16;
-        }
-      } else {
-        start = thread.anchor.primary.start.offset_utf16;
-        endExclusive = thread.anchor.primary.end.offset_utf16;
-      }
-
-      decoInputs.push({
-        thread_id: thread.thread_id,
-        status: thread.status,
-        start_offset: start,
-        end_offset: endExclusive,
-        anchor_confidence: confidence,
-      });
-
-      const firstMessage = thread.messages?.[0]?.body ?? '';
-      const excerpt = truncate(firstMessage, 80) || '(no message)';
-      panelRows.push({
-        thread_id: thread.thread_id,
-        status: thread.status,
-        anchor_confidence: confidence,
-        excerpt,
-        start_offset: confidence === 'broken' ? null : start,
-      });
-    }
+    const { decorations: decoInputs, panel: panelRows } = prepareThreads(
+      docText,
+      sidecarThreads,
+      { reanchorOnOpen }
+    );
 
     editorPane.innerHTML = '';
     if (sidecarError && sidecarRelPath) {
@@ -258,6 +213,13 @@ async function main() {
     }
   });
 
+  // Highlight the currently-open file in the tree. Codex round 2 finding #2.
+  ctx.currentFile.subscribe((next) => {
+    if (next && treeHandle) {
+      treeHandle.setSelection(next);
+    }
+  });
+
   rerenderTree();
 
   await bootstrapWorkspace(ctx, {
@@ -281,10 +243,6 @@ function resolveTheme(settings: PersistedState) {
   return (dark ? { kind: 'dark' as const } : { kind: 'light' as const }) as unknown as Parameters<typeof import('@pierre/trees').themeToTreeStyles>[0];
 }
 
-function truncate(s: string, n: number): string {
-  if (s.length <= n) return s;
-  return s.slice(0, n) + '…';
-}
 
 main().catch((err) => {
   console.error('app boot failure', err);

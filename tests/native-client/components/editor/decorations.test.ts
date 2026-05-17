@@ -4,7 +4,7 @@
 // dispatch the `setThreadsEffect` to verify the resulting DecorationSet
 // classes, range positions, and broken/resolved filtering.
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mountEditor } from '../../../../native-client/src/components/editor/cm6.js';
 import type { ThreadDecorationInput } from '../../../../native-client/src/components/editor/decorations.js';
 
@@ -249,5 +249,54 @@ describe('decorations.threads-to-marks', () => {
     });
     expect(parent.querySelector('.mdc-gutter-dot')).toBeFalsy();
     editor.destroy();
+  });
+
+  it('inline marks carry a confidence tooltip via title attribute', () => {
+    const parent = makeParent();
+    const editor = mountEditor({
+      parent,
+      docText: 'hello world',
+      threads: [
+        {
+          thread_id: 't-medium',
+          status: 'open',
+          start_offset: 0,
+          end_offset: 5,
+          anchor_confidence: 'medium',
+        },
+      ],
+    });
+    const mark = parent.querySelector(
+      '.mdc-thread.mdc-confidence-medium'
+    ) as HTMLElement;
+    expect(mark).toBeTruthy();
+    expect(mark.title).toMatch(/medium/i);
+    editor.destroy();
+  });
+
+  it('warns to console when raw thread offsets exceed doc length', async () => {
+    const parent = makeParent();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const editor = mountEditor({
+        parent,
+        docText: 'short',
+        threads: [
+          {
+            thread_id: 't-oob-warn',
+            status: 'open',
+            start_offset: 0,
+            end_offset: 999,
+            anchor_confidence: 'low',
+          },
+        ],
+      });
+      expect(warnSpy).toHaveBeenCalled();
+      const messages = warnSpy.mock.calls.map((c) => String(c[0]));
+      expect(messages.some((m) => m.includes('clamped to doc bounds'))).toBe(true);
+      editor.destroy();
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
