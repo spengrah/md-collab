@@ -1,0 +1,52 @@
+/* Anchor-confidence palette.
+ *
+ * Ported from the vscode-extension styling per plan §3.10 so that PR1
+ * matches the existing visual language. A future polish PR can swap in a
+ * fresh design language; for now the consistency invariant (spec §15.3)
+ * is best satisfied by reuse.
+ */
+
+.mdc-thread {
+  position: relative;
+}
+
+.mdc-thread.mdc-confidence-high {
+  background: rgba(96, 165, 250, 0.18); /* blue-ish */
+  border-bottom: 1px solid rgba(96, 165, 250, 0.6);
+}
+
+.mdc-thread.mdc-confidence-medium {
+  background: rgba(251, 191, 36, 0.18); /* amber */
+  border-bottom: 1px dashed rgba(251, 191, 36, 0.6);
+}
+
+.mdc-thread.mdc-confidence-low {
+  background: rgba(248, 113, 113, 0.18); /* red-ish */
+  border-bottom: 1px dotted rgba(248, 113, 113, 0.6);
+}
+
+/* Broken anchors do NOT render inline; they appear only in the panel. */
+
+/* Thread-panel dots reuse the same palette as solid swatches. */
+.mdc-thread-panel-dot.mdc-confidence-high {
+  background: rgb(96, 165, 250);
+}
+.mdc-thread-panel-dot.mdc-confidence-medium {
+  background: rgb(251, 191, 36);
+}
+.mdc-thread-panel-dot.mdc-confidence-low {
+  background: rgb(248, 113, 113);
+}
+.mdc-thread-panel-dot.mdc-confidence-broken {
+  background: rgb(120, 120, 130);
+}
+
+html[data-theme='dark'] .mdc-thread.mdc-confidence-high {
+  background: rgba(96, 165, 250, 0.28);
+}
+html[data-theme='dark'] .mdc-thread.mdc-confidence-medium {
+  background: rgba(251, 191, 36, 0.28);
+}
+html[data-theme='dark'] .mdc-thread.mdc-confidence-low {
+  background: rgba(248, 113, 113, 0.28);
+}

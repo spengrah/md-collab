@@ -21,8 +21,15 @@ vscode-extension/       # VS Code frontend
 obsidian-plugin/        # Obsidian frontend
   vendor/               # Vendored core
 
+native-client/          # Tauri 2 native desktop client (PR1: read-only)
+  src/                  # TS/JS frontend (Vite + CM6 + Pierre Trees)
+  src-tauri/            # Rust backend (read-only FS + IPC)
+  vendor/               # Vendored core (synced via sync-core)
+  scripts/              # sync-core, build-validator (AJV standalone)
+
 tests/                  # Vitest tests mirroring source structure
   fixtures/anchors/     # Fixture-driven reanchor test cases
+  native-client/        # Mirrors native-client/src/**
 
 .ai/
   rules/                # Project rules (core.md auto-imported)
@@ -50,4 +57,4 @@ Load context as needed, not upfront:
 ## Session Hints
 
 - Keep the directory tree above in sync with the actual structure — agents rely on it as their roadmap
-- After changing core exports: rebuild (`npm run build`), then sync vendors (`npm run precompile` in vscode-extension/, `node obsidian-plugin/scripts/sync-core.mjs`)
+- After changing core exports: rebuild (`npm run build`), then sync vendors (`npm run precompile` in vscode-extension/, `node obsidian-plugin/scripts/sync-core.mjs`, `cd native-client && npm run sync-core && npm run build-validator`). The root `prepare-native-client` script (wired into `pretest` / `pretest:coverage` / `preaccept` / `preaccept:smoke`) does the native-client sync automatically.

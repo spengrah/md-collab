@@ -1,0 +1,209 @@
+/* Base layout for the 3-column app shell.
+   Light + dark via [data-theme] on <html>.
+*/
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html[data-theme='dark'] body {
+  background: #1a1a1c;
+  color: #e6e6ea;
+}
+
+html[data-theme='light'] body,
+html[data-theme='auto'] body {
+  background: #ffffff;
+  color: #1a1a1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme='auto'] body {
+    background: #1a1a1c;
+    color: #e6e6ea;
+  }
+}
+
+body {
+  font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 260px 1fr 320px;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'header header header'
+    'tree   editor panel';
+  height: 100vh;
+}
+
+.mdc-header {
+  grid-area: header;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--mdc-border, rgba(0, 0, 0, 0.1));
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.mdc-header-banner {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.mdc-tree-pane {
+  grid-area: tree;
+  border-right: 1px solid var(--mdc-border, rgba(0, 0, 0, 0.1));
+  overflow: hidden;
+  min-height: 0;
+}
+
+.mdc-editor-pane {
+  grid-area: editor;
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.mdc-editor-pane .cm-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.mdc-panel-pane {
+  grid-area: panel;
+  border-left: 1px solid var(--mdc-border, rgba(0, 0, 0, 0.1));
+  overflow: auto;
+  padding: 8px;
+  min-height: 0;
+}
+
+.mdc-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  opacity: 0.6;
+}
+
+.mdc-pick-button {
+  font: inherit;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--mdc-border, rgba(0, 0, 0, 0.3));
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.mdc-pick-button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Sidecar parse-error banner */
+.mdc-sidecar-error-banner {
+  margin: 8px;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #d97706;
+  background: rgba(217, 119, 6, 0.08);
+}
+.mdc-sidecar-error-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.mdc-sidecar-error-detail {
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 11px;
+  opacity: 0.7;
+  margin: 6px 0 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.mdc-sidecar-error-actions button {
+  font: inherit;
+  margin-right: 8px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--mdc-border, rgba(0, 0, 0, 0.3));
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Thread panel */
+.mdc-thread-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.mdc-thread-panel-heading {
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+.mdc-thread-panel-heading-toggle {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+}
+.mdc-thread-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mdc-thread-panel-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 4px;
+}
+.mdc-thread-panel-row-clickable {
+  cursor: pointer;
+}
+.mdc-thread-panel-row-clickable:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.mdc-thread-panel-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex: 0 0 8px;
+}
+.mdc-thread-panel-excerpt {
+  flex: 1 1 auto;
+  font-size: 12px;
+}
+.mdc-thread-panel-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0.75;
+}
+.mdc-thread-panel-badge-relink-deferred {
+  background: rgba(0, 0, 0, 0.07);
+  border: 1px dashed rgba(0, 0, 0, 0.25);
+}
