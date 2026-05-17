@@ -10,7 +10,9 @@
     "commands": [
       { "name": "Unit tests", "command": "npm test" },
       { "name": "Coverage threshold check", "command": "npm run test:coverage" },
-      { "name": "Acceptance smoke", "command": "npm run accept:smoke" }
+      { "name": "Acceptance smoke", "command": "npm run accept:smoke" },
+      { "name": "native-client typecheck", "command": "cd native-client && npm run typecheck", "optional": false },
+      { "name": "native-client cargo test", "command": "cd native-client/src-tauri && cargo test --locked", "optional": false }
     ]
   },
   "learnings": {

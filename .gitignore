@@ -5,6 +5,11 @@ dist/
 vscode-extension/out/
 vscode-extension/vendor/
 obsidian-plugin/vendor/
+native-client/vendor/
+native-client/dist/
+native-client/src-tauri/target/
+native-client/src-tauri/gen/
+native-client/src/app/generated/
 
 # Learnings log ephemeral state (learnings themselves are committed)
 .ai/log/*

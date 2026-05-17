@@ -1,0 +1,85 @@
+name: native-client
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native-client/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('native-client/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Build root project (produces dist/ for vendor sync)
+        run: npm run build
+
+      - name: Install native-client deps
+        run: npm ci
+        working-directory: native-client
+
+      - name: Sync vendor + generate validator
+        run: |
+          npm run sync-core
+          npm run build-validator
+        working-directory: native-client
+
+      - name: Install + precompile sibling-frontend vendors (so root npm test can resolve their imports)
+        run: |
+          npm ci --prefix vscode-extension
+          npm --prefix vscode-extension run precompile
+          npm ci --prefix obsidian-plugin
+          node obsidian-plugin/scripts/sync-core.mjs
+
+      - name: TypeScript typecheck (native-client)
+        run: npm run typecheck
+        working-directory: native-client
+
+      - name: Vite production build (sanity-check bundler)
+        run: npx vite build
+        working-directory: native-client
+
+      - name: Vitest (root, includes tests/native-client/**)
+        run: npm test
+
+      - name: Vitest coverage thresholds
+        run: npm run test:coverage
+
+      - name: Cargo test
+        run: cargo test --locked
+        working-directory: native-client/src-tauri
+
+      - name: Cargo tauri build --debug
+        run: |
+          cargo install tauri-cli --version "^2.0" --locked
+          cargo tauri build --debug
+        working-directory: native-client

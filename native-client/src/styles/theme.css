@@ -1,0 +1,27 @@
+/* Theme variables.
+ *
+ * Light + dark + auto. The webview sets `data-theme="auto|light|dark"` on
+ * <html> based on settings.ui_theme. When `auto`, prefers-color-scheme
+ * decides at the CSS level via the @media block below.
+ */
+
+html[data-theme='light'],
+html[data-theme='auto'] {
+  --mdc-border: rgba(0, 0, 0, 0.12);
+  --mdc-text: #1a1a1c;
+  --mdc-bg: #ffffff;
+}
+
+html[data-theme='dark'] {
+  --mdc-border: rgba(255, 255, 255, 0.16);
+  --mdc-text: #e6e6ea;
+  --mdc-bg: #1a1a1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme='auto'] {
+    --mdc-border: rgba(255, 255, 255, 0.16);
+    --mdc-text: #e6e6ea;
+    --mdc-bg: #1a1a1c;
+  }
+}
