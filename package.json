@@ -21,7 +21,7 @@
   ],
   "scripts": {
     "build": "node ./scripts/build-dist.mjs",
-    "prepare-native-client": "cd native-client && npm run sync-core && npm run build-validator",
+    "prepare-native-client": "cd native-client && (test -d node_modules || npm ci) && npm run sync-core && npm run build-validator",
     "pretest": "npm run prepare-native-client",
     "test": "vitest run",
     "test:watch": "vitest",
