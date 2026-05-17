@@ -145,32 +145,53 @@ async function main() {
         }
       }
     } catch (err) {
-      console.warn('sidecar read failed', err);
+      // Surface read failures explicitly via the banner so the user is not
+      // left wondering why their comments disappeared (Codex round 1 #6).
+      sidecarRelPath = `${relPath}.comments.json`;
+      sidecarError = `Failed to read sidecar: ${err instanceof Error ? err.message : String(err)}`;
     }
 
     // Compute decoration inputs by reanchoring each thread.
+    //
+    // Inclusive/exclusive end semantics:
+    //   - stored `thread.anchor.primary.end.offset_utf16` is EXCLUSIVE
+    //     (see src/anchor.ts line 76 — "stored primary.end.offset_utf16 is
+    //     also exclusive").
+    //   - `reanchor()`'s `result.end.offset_utf16` is INCLUSIVE (the engine
+    //     calls offsetToPoint on candidate.end - 1).
+    //
+    // CM6 `Decoration.mark` expects EXCLUSIVE end, so:
+    //   - reanchor path: +1 to convert inclusive -> exclusive
+    //   - direct path:   use stored value as-is (already exclusive)
     const decoInputs: ThreadDecorationInput[] = [];
     const panelRows: ThreadPanelRow[] = [];
+    const reanchorOnOpen = settings.settings.reanchor_on_open ?? true;
     for (const thread of sidecarThreads) {
-      const reanchorOnOpen = settings.settings.reanchor_on_open ?? true;
       let start: number;
-      let end: number;
+      let endExclusive: number;
       let confidence = thread.anchor.anchor_confidence;
       if (reanchorOnOpen) {
         const result = reanchor(docText, thread.anchor as Anchor);
         confidence = result.anchor_confidence;
-        start = result.start?.offset_utf16 ?? thread.anchor.primary.start.offset_utf16;
-        end = result.end?.offset_utf16 ?? thread.anchor.primary.end.offset_utf16;
+        if (result.start && result.end) {
+          start = result.start.offset_utf16;
+          endExclusive = result.end.offset_utf16 + 1;
+        } else {
+          // Broken — use the stored values (also exclusive end) so the panel
+          // can still surface a position. Inline rendering skips broken.
+          start = thread.anchor.primary.start.offset_utf16;
+          endExclusive = thread.anchor.primary.end.offset_utf16;
+        }
       } else {
         start = thread.anchor.primary.start.offset_utf16;
-        end = thread.anchor.primary.end.offset_utf16;
+        endExclusive = thread.anchor.primary.end.offset_utf16;
       }
 
       decoInputs.push({
         thread_id: thread.thread_id,
         status: thread.status,
         start_offset: start,
-        end_offset: end + 1, // engine returns inclusive end; CM6 mark wants exclusive
+        end_offset: endExclusive,
         anchor_confidence: confidence,
       });
 
@@ -199,6 +220,9 @@ async function main() {
       parent: editorPane,
       docText,
       threads: decoInputs,
+      decorationOptions: {
+        showResolvedInline: settings.settings.show_resolved_inline ?? false,
+      },
     });
 
     panelHandle = mountThreadPanel({
@@ -225,6 +249,14 @@ async function main() {
     if (treeHandle) treeHandle.setTheme(resolveTheme(settings));
   };
   mql.addEventListener('change', reapplyTheme);
+
+  // Push file-list updates (from the polling loop's delta.files) into the
+  // mounted tree without a full reopen. Codex round 1 finding #4.
+  ctx.state.subscribe((next) => {
+    if (next && treeHandle) {
+      treeHandle.setPaths(next.files);
+    }
+  });
 
   rerenderTree();
 

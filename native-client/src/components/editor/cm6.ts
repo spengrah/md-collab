@@ -7,11 +7,17 @@
 import { EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
 
-import { threadDecorationsExtension, setThreadsEffect, type ThreadDecorationInput } from './decorations.js';
+import {
+  setThreadsEffect,
+  threadDecorationsExtension,
+  threadGutterExtension,
+  type DecorationBuildOptions,
+  type ThreadDecorationInput,
+} from './decorations.js';
 
 export interface EditorHandle {
   view: EditorView;
-  setThreads(threads: readonly ThreadDecorationInput[]): void;
+  setThreads(threads: readonly ThreadDecorationInput[], options?: DecorationBuildOptions): void;
   /** Scroll the editor so `offset` is visible. */
   scrollTo(offset: number): void;
   destroy(): void;
@@ -21,7 +27,10 @@ export interface EditorMountOptions {
   parent: HTMLElement;
   docText: string;
   threads: readonly ThreadDecorationInput[];
+  decorationOptions?: DecorationBuildOptions;
 }
+
+const DEFAULT_DECO_OPTIONS: DecorationBuildOptions = { showResolvedInline: false };
 
 export function mountEditor(options: EditorMountOptions): EditorHandle {
   const state = EditorState.create({
@@ -31,6 +40,7 @@ export function mountEditor(options: EditorMountOptions): EditorHandle {
       EditorState.readOnly.of(true),
       EditorView.editable.of(false),
       threadDecorationsExtension,
+      threadGutterExtension,
     ],
   });
 
@@ -39,17 +49,22 @@ export function mountEditor(options: EditorMountOptions): EditorHandle {
     parent: options.parent,
   });
 
-  // Dispatch the initial thread set via the effect (the extension reads it
-  // from the state field).
+  // Dispatch the initial thread set + decoration options via the effect.
   view.dispatch({
-    effects: setThreadsEffect.of([...options.threads]),
+    effects: setThreadsEffect.of({
+      threads: [...options.threads],
+      options: options.decorationOptions ?? DEFAULT_DECO_OPTIONS,
+    }),
   });
+
+  let lastOptions = options.decorationOptions ?? DEFAULT_DECO_OPTIONS;
 
   return {
     view,
-    setThreads(threads) {
+    setThreads(threads, decoOptions) {
+      if (decoOptions) lastOptions = decoOptions;
       view.dispatch({
-        effects: setThreadsEffect.of([...threads]),
+        effects: setThreadsEffect.of({ threads: [...threads], options: lastOptions }),
       });
     },
     scrollTo(offset) {

@@ -4,9 +4,13 @@
 // sources and Rust backend sources for forbidden mutation names.
 //
 // Whitelist:
-//   - `settings_save` / `settingsSave` — persists state.json, not a sidecar.
 //   - `fs_open_sidecar_externally` / `fsOpenSidecarExternally` — launches
 //     an external editor; no mutation crosses our IPC.
+//
+// Note: PR1 used to whitelist `settings_save` for the last-workspace write
+// path, but the broader settings-save IPC has been removed entirely
+// (Codex round 1 finding #8); `last_workspace` is now persisted only via
+// the internal save inside `workspace_open`.
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -39,7 +43,7 @@ const MUTATION_NAMES = [
   'mdc_invoke',
 ];
 
-const WHITELIST_SUBSTRINGS = ['settings_save', 'settingsSave', 'fs_open_sidecar_externally', 'fsOpenSidecarExternally'];
+const WHITELIST_SUBSTRINGS = ['fs_open_sidecar_externally', 'fsOpenSidecarExternally'];
 
 function walk(root: string, ext: string[]): string[] {
   const out: string[] = [];

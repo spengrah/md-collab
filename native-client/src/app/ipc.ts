@@ -33,6 +33,9 @@ export interface WorkspaceState {
 export interface ThreadCountsDelta {
   updated: Record<string, number>;
   removed: string[];
+  /** Full file list as of this refresh; lets the tree pick up additions and
+   *  removals without a workspace reopen. */
+  files: RelPathStr[];
 }
 
 export type ThemeChoice = 'auto' | 'light' | 'dark';
@@ -75,7 +78,9 @@ export const ipc = {
     call<void>('fs_open_sidecar_externally', { sidecarRel }),
   fsStat: (rel: string) => call<StatInfo>('fs_stat', { rel }),
   settingsLoad: () => call<PersistedState>('settings_load'),
-  settingsSave: (next: PersistedState) => call<void>('settings_save', { next }),
+  // PR1 intentionally does not expose a settings save IPC; last_workspace is
+  // persisted internally by `workspace_open`. A general settings UI + save
+  // surface lands with PR6 (Codex round 1 finding #8).
 };
 
 export type Ipc = typeof ipc;

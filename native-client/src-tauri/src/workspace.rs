@@ -48,6 +48,11 @@ pub struct WorkspaceState {
 pub struct ThreadCountsDelta {
     pub updated: HashMap<String, u32>,
     pub removed: Vec<String>,
+    /// Full file list as of this refresh. The frontend uses this to keep the
+    /// Pierre Trees `paths` set in sync with the workspace on disk (Codex
+    /// review round 1 finding #4 — file additions and removals must surface
+    /// without a workspace reopen).
+    pub files: Vec<RelPath>,
 }
 
 #[derive(Debug, Clone)]
@@ -153,7 +158,11 @@ impl Workspace {
             self.count_cache.remove(k);
         }
 
-        Ok(ThreadCountsDelta { updated, removed })
+        Ok(ThreadCountsDelta {
+            updated,
+            removed,
+            files: self.files.clone(),
+        })
     }
 
     async fn refresh_one(&mut self, doc_rel: &RelPath) -> Result<u32, IpcError> {

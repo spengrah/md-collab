@@ -54,8 +54,10 @@ export function mountFileTree(options: FileTreeMountOptions): FileTreeHandle {
     } satisfies FileTreeRowDecoration;
   };
 
+  let currentPaths = [...paths];
+
   const tree = new FileTree({
-    paths: [...paths],
+    paths: currentPaths,
     renderRowDecoration,
     onSelectionChange: (selectedPaths) => {
       // Pierre Trees emits the selection-change event with the full selection
@@ -72,12 +74,11 @@ export function mountFileTree(options: FileTreeMountOptions): FileTreeHandle {
   });
 
   // Counts can change behind us (polling loop); subscribe and trigger a
-  // re-render so the decoration callback re-runs.
+  // re-render so the decoration callback re-runs against the latest paths
+  // (Codex round 1 finding #4 — must use currentPaths, not the initial set).
   const unsubscribe = counts.subscribe(() => {
-    tree.resetPaths([...paths]);
+    tree.resetPaths(currentPaths);
   });
-
-  let currentPaths = [...paths];
 
   return {
     setPaths(next) {

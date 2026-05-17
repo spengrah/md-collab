@@ -1,9 +1,14 @@
 //! Tauri IPC command surface. All commands return `Result<T, IpcError>` so the
 //! webview sees a stable `{ code, ... }` envelope on errors.
+//!
+//! Concurrency model: workspace lives behind a `tokio::sync::Mutex`. Each
+//! command acquires the lock, performs its read, releases. This serializes IPC
+//! calls instead of taking-and-restoring the workspace; the polling refresh
+//! cannot make the workspace appear missing to concurrent file-open calls.
+//! (Codex review round 1 finding #1.)
 
 use std::path::PathBuf;
 
-use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
@@ -45,14 +50,12 @@ pub async fn workspace_open(
     let snapshot = workspace.snapshot();
 
     {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
+        let mut guard = state.workspace.lock().await;
         *guard = Some(workspace);
     }
 
-    // Persist last_workspace.
+    // Persist last_workspace ONLY. PR1 does not expose a broader settings-save
+    // surface; settings_save is intentionally not registered as a Tauri command.
     {
         let mut persisted = state
             .persisted
@@ -70,11 +73,10 @@ pub async fn workspace_open(
 }
 
 #[tauri::command]
-pub async fn workspace_current(state: State<'_, AppState>) -> Result<Option<WorkspaceState>, IpcError> {
-    let guard = state
-        .workspace
-        .lock()
-        .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
+pub async fn workspace_current(
+    state: State<'_, AppState>,
+) -> Result<Option<WorkspaceState>, IpcError> {
+    let guard = state.workspace.lock().await;
     Ok(guard.as_ref().map(|ws| ws.snapshot()))
 }
 
@@ -82,10 +84,7 @@ pub async fn workspace_current(state: State<'_, AppState>) -> Result<Option<Work
 pub async fn workspace_list_markdown(
     state: State<'_, AppState>,
 ) -> Result<Vec<RelPath>, IpcError> {
-    let guard = state
-        .workspace
-        .lock()
-        .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
+    let guard = state.workspace.lock().await;
     let ws = guard
         .as_ref()
         .ok_or_else(|| IpcError::workspace_invalid(String::new(), "no workspace open"))?;
@@ -96,30 +95,11 @@ pub async fn workspace_list_markdown(
 pub async fn workspace_refresh_counts(
     state: State<'_, AppState>,
 ) -> Result<ThreadCountsDelta, IpcError> {
-    // We need an async path while holding the workspace; take it out, refresh,
-    // put it back. This is fine because only one refresh is in flight at a time
-    // (the webview polls; we don't fan out).
-    let mut workspace = {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
-        guard.take().ok_or_else(|| {
-            IpcError::workspace_invalid(String::new(), "no workspace open")
-        })?
-    };
-
-    let result = workspace.refresh_counts().await;
-
-    {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
-        *guard = Some(workspace);
-    }
-
-    result
+    let mut guard = state.workspace.lock().await;
+    let ws = guard
+        .as_mut()
+        .ok_or_else(|| IpcError::workspace_invalid(String::new(), "no workspace open"))?;
+    ws.refresh_counts().await
 }
 
 #[tauri::command]
@@ -128,27 +108,11 @@ pub async fn fs_read_file(
     state: State<'_, AppState>,
 ) -> Result<String, IpcError> {
     let rel = RelPath::new(&rel)?;
-    let workspace = {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
-        guard.take().ok_or_else(|| {
-            IpcError::workspace_invalid(String::new(), "no workspace open")
-        })?
-    };
-
-    let result = workspace.adapter().read_file(&rel).await;
-
-    {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
-        *guard = Some(workspace);
-    }
-
-    result
+    let guard = state.workspace.lock().await;
+    let ws = guard
+        .as_ref()
+        .ok_or_else(|| IpcError::workspace_invalid(String::new(), "no workspace open"))?;
+    ws.adapter().read_file(&rel).await
 }
 
 #[tauri::command]
@@ -157,63 +121,28 @@ pub async fn fs_read_sidecar(
     state: State<'_, AppState>,
 ) -> Result<Option<SidecarRead>, IpcError> {
     let rel = RelPath::new(&doc_rel)?;
-    let workspace = {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
-        guard.take().ok_or_else(|| {
-            IpcError::workspace_invalid(String::new(), "no workspace open")
-        })?
-    };
-
-    let result = workspace.adapter().read_sidecar(&rel).await;
-
-    {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
-        *guard = Some(workspace);
-    }
-
-    result
+    let guard = state.workspace.lock().await;
+    let ws = guard
+        .as_ref()
+        .ok_or_else(|| IpcError::workspace_invalid(String::new(), "no workspace open"))?;
+    ws.adapter().read_sidecar(&rel).await
 }
 
 #[tauri::command]
-pub async fn fs_stat(
-    rel: String,
-    state: State<'_, AppState>,
-) -> Result<StatInfo, IpcError> {
+pub async fn fs_stat(rel: String, state: State<'_, AppState>) -> Result<StatInfo, IpcError> {
     let rel = RelPath::new(&rel)?;
-    let workspace = {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
-        guard.take().ok_or_else(|| {
-            IpcError::workspace_invalid(String::new(), "no workspace open")
-        })?
-    };
-
-    let result = workspace.adapter().stat(&rel).await;
-
-    {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
-        *guard = Some(workspace);
-    }
-
-    result
+    let guard = state.workspace.lock().await;
+    let ws = guard
+        .as_ref()
+        .ok_or_else(|| IpcError::workspace_invalid(String::new(), "no workspace open"))?;
+    ws.adapter().stat(&rel).await
 }
 
 /// Launch the user's macOS default `.json` handler on a sidecar path.
 ///
 /// Validation: (a) `RelPath` rejects absolute paths / traversal. (b) Path must
-/// end in `.comments.json`. (c) Resolve must stay under workspace root.
-/// Only then do we invoke `tauri-plugin-opener`'s `open_path()`.
+/// end in `.comments.json`. (c) `resolve_within` enforces canonical-symlink
+/// containment. Only then do we invoke `tauri-plugin-opener::open_path()`.
 #[tauri::command]
 pub async fn fs_open_sidecar_externally(
     sidecar_rel: String,
@@ -228,12 +157,9 @@ pub async fn fs_open_sidecar_externally(
     }
 
     let abs = {
-        let mut guard = state
-            .workspace
-            .lock()
-            .map_err(|e| IpcError::internal(format!("workspace lock poisoned: {e}")))?;
+        let guard = state.workspace.lock().await;
         let ws = guard
-            .as_mut()
+            .as_ref()
             .ok_or_else(|| IpcError::workspace_invalid(String::new(), "no workspace open"))?;
         let abs = ws.adapter().resolve_absolute(&rel)?;
         if !abs.exists() {
@@ -248,11 +174,6 @@ pub async fn fs_open_sidecar_externally(
     Ok(())
 }
 
-#[derive(Serialize)]
-pub struct SettingsPayload {
-    pub state: PersistedState,
-}
-
 #[tauri::command]
 pub async fn settings_load(state: State<'_, AppState>) -> Result<PersistedState, IpcError> {
     let guard = state
@@ -262,21 +183,10 @@ pub async fn settings_load(state: State<'_, AppState>) -> Result<PersistedState,
     Ok(guard.clone())
 }
 
-#[tauri::command]
-pub async fn settings_save(
-    next: PersistedState,
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<(), IpcError> {
-    let dir = app_data_dir(&app)?;
-    next.save_to(&dir)?;
-    let mut guard = state
-        .persisted
-        .lock()
-        .map_err(|e| IpcError::internal(format!("persisted lock poisoned: {e}")))?;
-    *guard = next;
-    Ok(())
-}
+// NOTE: PR1 deliberately does NOT expose a `settings_save` IPC command. The
+// only persisted-state mutation in PR1 is `last_workspace`, which is written
+// internally by `workspace_open`. A general settings-save surface lands with
+// the settings UI in PR6. (Codex review round 1 finding #8.)
 
 #[cfg(test)]
 mod tests {

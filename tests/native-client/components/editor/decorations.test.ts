@@ -190,4 +190,64 @@ describe('decorations.threads-to-marks', () => {
     expect(decoCount(parent, 'mdc-confidence-medium')).toBe(1);
     editor.destroy();
   });
+
+  it('show_resolved_inline true causes resolved threads to receive inline marks', () => {
+    const parent = makeParent();
+    const editor = mountEditor({
+      parent,
+      docText: 'hello world',
+      threads: [
+        {
+          thread_id: 't-res',
+          status: 'resolved',
+          start_offset: 0,
+          end_offset: 5,
+          anchor_confidence: 'high',
+        },
+      ],
+      decorationOptions: { showResolvedInline: true },
+    });
+    expect(decoCount(parent, 'mdc-confidence-high')).toBe(1);
+    editor.destroy();
+  });
+
+  it('renders gutter dots for non-broken threads', () => {
+    const parent = makeParent();
+    const editor = mountEditor({
+      parent,
+      docText: 'aaaa\nbbbb',
+      threads: [
+        {
+          thread_id: 't-g',
+          status: 'open',
+          start_offset: 0,
+          end_offset: 4,
+          anchor_confidence: 'high',
+        },
+      ],
+    });
+    const gutter = parent.querySelector('.mdc-gutter-dot.mdc-confidence-high');
+    expect(gutter).toBeTruthy();
+    expect(gutter?.getAttribute('data-mdc-thread-id')).toBe('t-g');
+    editor.destroy();
+  });
+
+  it('no gutter dot for broken anchors', () => {
+    const parent = makeParent();
+    const editor = mountEditor({
+      parent,
+      docText: 'aaaa',
+      threads: [
+        {
+          thread_id: 't-broken-gutter',
+          status: 'open',
+          start_offset: 0,
+          end_offset: 4,
+          anchor_confidence: 'broken',
+        },
+      ],
+    });
+    expect(parent.querySelector('.mdc-gutter-dot')).toBeFalsy();
+    editor.destroy();
+  });
 });

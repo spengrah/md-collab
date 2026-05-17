@@ -76,6 +76,18 @@ export function startCountPolling(
         for (const k of delta.removed) delete next[k];
         return next;
       });
+      // Push file additions/removals back into the WorkspaceState so the tree
+      // reflects newly-added or removed `.md` files without a workspace reopen
+      // (Codex round 1 finding #4).
+      const currentState = ctx.state.get();
+      if (currentState && delta.files) {
+        const sameLength = currentState.files.length === delta.files.length;
+        const sameOrder =
+          sameLength && currentState.files.every((p, i) => p === delta.files[i]);
+        if (!sameOrder) {
+          ctx.state.set({ ...currentState, files: delta.files });
+        }
+      }
     } catch (err) {
       console.warn('workspace_refresh_counts failed', err);
     }

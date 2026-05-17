@@ -66,18 +66,58 @@ impl RelPath {
         PathBuf::from(&self.0)
     }
 
-    /// Resolve against a workspace root. Returns the absolute path or an error
-    /// if the resolved path escapes the root (defense-in-depth).
+    /// Resolve against a workspace root. Returns the absolute path or an
+    /// error if the resolved path escapes the root.
+    ///
+    /// Two-stage guard:
+    ///   1. Lexical: joining the relative path does not introduce `..` or
+    ///      reset to the FS root.
+    ///   2. FS-canonical: if the path (or any ancestor) exists, canonicalize
+    ///      both the candidate and the root, then check `starts_with`. This
+    ///      catches symlinks that point outside the workspace (Codex review
+    ///      round 1 finding #2). For paths that don't exist yet (e.g.
+    ///      lookups for a missing sidecar), we fall back to the lexical
+    ///      check on the candidate alone — the IO call will still surface
+    ///      a `FsNotFound`, and any subsequent successful open re-runs this
+    ///      function on a path that DOES exist, catching the escape.
     pub fn resolve_within(&self, root: &Path) -> Result<PathBuf, IpcError> {
         let candidate = root.join(&self.0);
-        // We cannot canonicalize here without touching the FS; instead, verify
-        // that joining did not introduce a `..` or absolute reset.
+        // Stage 1: lexical
         if !candidate.starts_with(root) {
             return Err(IpcError::path_invalid(format!(
                 "resolved path escapes workspace: {}",
                 self.0
             )));
         }
+
+        // Stage 2: canonicalize when the candidate exists. If it doesn't (yet),
+        // walk up to the deepest existing ancestor and canonicalize that to
+        // verify no symlink along the way escapes.
+        let root_canonical = match std::fs::canonicalize(root) {
+            Ok(c) => c,
+            Err(_) => return Ok(candidate),
+        };
+
+        let mut probe = candidate.as_path();
+        let canonical_probe = loop {
+            match std::fs::canonicalize(probe) {
+                Ok(c) => break c,
+                Err(_) => match probe.parent() {
+                    Some(p) => probe = p,
+                    None => return Ok(candidate),
+                },
+            }
+        };
+
+        // The deepest existing canonical prefix of the candidate must live
+        // under the canonical workspace root.
+        if !canonical_probe.starts_with(&root_canonical) {
+            return Err(IpcError::path_invalid(format!(
+                "resolved path escapes workspace via symlink: {}",
+                self.0
+            )));
+        }
+
         Ok(candidate)
     }
 
@@ -217,5 +257,38 @@ mod tests {
     fn rel_path_sidecar_non_md_returns_none() {
         let p = RelPath::new("docs/README.txt").unwrap();
         assert!(p.sidecar().is_none());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn resolve_within_rejects_symlink_escape() {
+        use tempfile::TempDir;
+
+        let outside_dir = TempDir::new().unwrap();
+        let outside_file = outside_dir.path().join("secret.md.comments.json");
+        std::fs::write(&outside_file, "{}").unwrap();
+
+        let workspace = TempDir::new().unwrap();
+        // Create a symlink INSIDE the workspace pointing outside.
+        let link = workspace.path().join("escape.md.comments.json");
+        std::os::unix::fs::symlink(&outside_file, &link).unwrap();
+
+        let rel = RelPath::new("escape.md.comments.json").unwrap();
+        let result = rel.resolve_within(workspace.path());
+        assert!(
+            result.is_err(),
+            "expected symlink escape to be rejected; got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn resolve_within_allows_non_existent_path() {
+        use tempfile::TempDir;
+        let workspace = TempDir::new().unwrap();
+        let rel = RelPath::new("not/yet/there.md").unwrap();
+        // Should succeed; the read call will surface FsNotFound separately.
+        let resolved = rel.resolve_within(workspace.path()).unwrap();
+        assert!(resolved.ends_with("not/yet/there.md"));
     }
 }

@@ -12,11 +12,15 @@ pub mod workspace;
 
 use std::sync::Mutex;
 use tauri::Manager;
+use tokio::sync::Mutex as AsyncMutex;
 
-/// Mutable app state behind a single mutex. Workspace + settings live here; the
-/// webview observes them through `#[tauri::command]` getters and refresh calls.
+/// Mutable app state. The workspace lives behind an **async** mutex because
+/// FS reads are awaited while holding the lock; sync mutexes would force the
+/// take-and-restore pattern that Codex round-1 finding #1 flagged as
+/// racing under concurrent IPC during the polling loop. Settings stay behind
+/// a sync mutex because reads are synchronous.
 pub struct AppState {
-    pub workspace: Mutex<Option<workspace::Workspace>>,
+    pub workspace: AsyncMutex<Option<workspace::Workspace>>,
     pub persisted: Mutex<state::PersistedState>,
 }
 
@@ -40,7 +44,7 @@ pub fn run() {
             });
 
             app.manage(AppState {
-                workspace: Mutex::new(None),
+                workspace: AsyncMutex::new(None),
                 persisted: Mutex::new(persisted),
             });
             Ok(())
@@ -55,7 +59,6 @@ pub fn run() {
             commands::fs_open_sidecar_externally,
             commands::fs_stat,
             commands::settings_load,
-            commands::settings_save,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
