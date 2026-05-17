@@ -53,6 +53,13 @@ jobs:
           npm run build-validator
         working-directory: native-client
 
+      - name: Install + precompile sibling-frontend vendors (so root npm test can resolve their imports)
+        run: |
+          npm ci --prefix vscode-extension
+          npm --prefix vscode-extension run precompile
+          npm ci --prefix obsidian-plugin
+          node obsidian-plugin/scripts/sync-core.mjs
+
       - name: TypeScript typecheck (native-client)
         run: npm run typecheck
         working-directory: native-client
